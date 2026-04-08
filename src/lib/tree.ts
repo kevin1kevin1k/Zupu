@@ -134,8 +134,7 @@ export function buildFlowElements(
     id: relationship.id,
     source: relationship.fromPersonId,
     target: relationship.toPersonId,
-    type: "smoothstep",
-    label: relationship.type === "spouse" ? "配偶" : undefined,
+    type: relationship.type === "spouse" ? "spouse" : "smoothstep",
     animated: relationship.type === "parent-child",
     className:
       relationship.type === "spouse" ? "relationship-edge relationship-edge--spouse" : "relationship-edge",

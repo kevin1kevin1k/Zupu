@@ -273,7 +273,21 @@ button:disabled {
 
 .relationship-edge--spouse path {
   stroke: #b06f42;
-  stroke-dasharray: 6 4;
+  stroke-width: 2.5;
+  stroke-dasharray: none;
+}
+
+.spouse-edge__heart {
+  display: grid;
+  place-items: center;
+  position: absolute;
+  border-radius: 999px;
+  background: rgba(255, 252, 247, 0.96);
+  color: #b06f42;
+  font-size: 1rem;
+  line-height: 1;
+  box-shadow: 0 4px 12px rgba(99, 65, 39, 0.16);
+  pointer-events: none;
 }
 
 .react-flow__attribution {

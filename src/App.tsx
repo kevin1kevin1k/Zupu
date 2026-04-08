@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import {
   Background,
   Controls,
+  type EdgeTypes,
   MiniMap,
   ReactFlow,
   useReactFlow,
 } from "@xyflow/react";
 import { sampleTree } from "./data/sampleTree";
 import { PersonNode } from "./components/PersonNode";
+import { SpouseEdge } from "./components/SpouseEdge";
 import {
   buildFlowElements,
   createBlankPerson,
@@ -21,6 +23,10 @@ import type { Gender, Person, Relationship } from "./types/family";
 
 const nodeTypes = {
   person: PersonNode,
+};
+
+const edgeTypes: EdgeTypes = {
+  spouse: SpouseEdge,
 };
 
 function App() {
@@ -252,6 +258,7 @@ function App() {
 
         <div className="flow-wrapper">
           <ReactFlow
+            edgeTypes={edgeTypes}
             edges={edges}
             fitView
             minZoom={0.2}

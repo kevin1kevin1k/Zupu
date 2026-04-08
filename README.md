@@ -25,18 +25,49 @@ Current v1 goals:
 
 ## Current Status
 
-This repository is currently in the planning stage. The main product definition lives in [docs/PRD.md](/Users/kevin1kevin1k/Zupu/docs/PRD.md), which documents the v1 scope, product rules, and acceptance criteria.
+This repository now includes a local frontend prototype for the family tree canvas. The main product definition still lives in [docs/PRD.md](/Users/kevin1kevin1k/Zupu/docs/PRD.md), and the prototype focuses on validating the v1 interaction model quickly.
 
-目前這個 repo 仍以產品規劃為主，尚未開始正式實作。最主要的需求文件在 [docs/PRD.md](/Users/kevin1kevin1k/Zupu/docs/PRD.md)。
+目前這個 repo 已經有一個可本地執行的前端原型，用來快速驗證族譜畫布、人物新增與 JSON 匯入匯出。最主要的需求文件仍在 [docs/PRD.md](/Users/kevin1kevin1k/Zupu/docs/PRD.md)。
+
+## Local Development
+
+Run the prototype locally from the repository root:
+
+```bash
+npm install
+npm run dev
+```
+
+Optional checks:
+
+```bash
+npm run check
+npm run build
+```
+
+在 repo 根目錄執行以下指令即可啟動本地原型：
+
+```bash
+npm install
+npm run dev
+```
+
+可選的檢查指令：
+
+```bash
+npm run check
+npm run build
+```
 
 ## Repository Structure
 
+- `src/`: local React + Vite prototype for the family tree canvas.
 - [docs/PRD.md](/Users/kevin1kevin1k/Zupu/docs/PRD.md): v1 product requirements for the family tree website.
+- [docs/TODO.md](/Users/kevin1kevin1k/Zupu/docs/TODO.md): implementation checklist derived from the PRD.
 - [AGENTS.md](/Users/kevin1kevin1k/Zupu/AGENTS.md): contributor guidelines for this repository.
 
 ## Next Steps
 
-- Choose the frontend and backend stack.
-- Define the first-pass data model for people and relationships.
-- Prototype the tree canvas and automatic layout behavior.
-- Set up the initial application structure and development workflow.
+- Iterate on the layout rules for spouse and child placement.
+- Add search, kinship labels, and edit history after the prototype proves the interaction model.
+- Introduce a backend and persistence only after the local prototype is stable.

@@ -8,6 +8,10 @@ const RANK_SPACING = 184;
 const TOP_PADDING = 72;
 const SPOUSE_GAP = 28;
 const CLUSTER_GAP = 72;
+const HALF_NODE_WIDTH = NODE_WIDTH / 2;
+const PARTNER_CENTER_DISTANCE = NODE_WIDTH + SPOUSE_GAP;
+const PARTNER_OUTER_EXTENT = PARTNER_CENTER_DISTANCE + HALF_NODE_WIDTH;
+const SIBLING_GAP = NODE_WIDTH + CLUSTER_GAP;
 
 export function createBlankPerson(name: string, gender: Gender): Person {
   return {
@@ -135,7 +139,7 @@ export function buildFlowElements(
     source: relationship.fromPersonId,
     target: relationship.toPersonId,
     type: relationship.type === "spouse" ? "spouse" : "smoothstep",
-    animated: relationship.type === "parent-child",
+    animated: false,
     className:
       relationship.type === "spouse" ? "relationship-edge relationship-edge--spouse" : "relationship-edge",
   }));
@@ -173,6 +177,7 @@ export function getNextPersonName(prefix: string, people: Person[]): string {
 type LayoutBlock = {
   id: string;
   personIds: string[];
+  anchorPersonId: string;
   generation: number;
   sortIndex: number;
   parentIds: string[];
@@ -183,8 +188,11 @@ type LayoutBlock = {
 type LayoutCluster = {
   id: string;
   blocks: LayoutBlock[];
+  anchoredToParents: boolean;
   sortIndex: number;
   desiredCenterX: number | null;
+  leftExtent: number;
+  rightExtent: number;
   width: number;
 };
 
@@ -331,17 +339,10 @@ function resolvePersonCenterX(
 
     for (const cluster of clusters) {
       const clusterCenter = clusterCenters.get(cluster.id) ?? 0;
-      let cursor = clusterCenter - cluster.width / 2;
+      const clusterLayout = layoutClusterMembers(cluster, clusterCenter);
 
-      for (const block of cluster.blocks) {
-        const blockStart = cursor;
-        const blockCenters = layoutBlockMembers(block, blockStart);
-
-        for (const [personId, centerX] of blockCenters) {
-          centerXByPersonId.set(personId, centerX);
-        }
-
-        cursor += block.width + CLUSTER_GAP;
+      for (const [personId, centerX] of clusterLayout) {
+        centerXByPersonId.set(personId, centerX);
       }
     }
   }
@@ -411,6 +412,7 @@ function buildLayoutBlocks(
     return {
       id: groupId,
       personIds: orderedPeople.map((person) => person.id),
+      anchorPersonId: representativePerson.id,
       generation: generationByGroupId.get(groupId) ?? 0,
       sortIndex: Math.min(
         ...orderedPeople.map((person) => personOrderById.get(person.id) ?? 0),
@@ -454,12 +456,19 @@ function buildLayoutClusters(
     const width =
       orderedBlocks.reduce((sum, block) => sum + block.width, 0) +
       Math.max(0, orderedBlocks.length - 1) * CLUSTER_GAP;
+    const anchoredToParents = orderedBlocks[0]?.parentSignature !== null;
+    const { leftExtent, rightExtent } = anchoredToParents
+      ? getAnchoredClusterExtents(orderedBlocks)
+      : { leftExtent: width / 2, rightExtent: width / 2 };
 
     return {
       id: clusterId,
       blocks: orderedBlocks,
+      anchoredToParents,
       sortIndex: Math.min(...orderedBlocks.map((block) => block.sortIndex)),
       desiredCenterX,
+      leftExtent,
+      rightExtent,
       width,
     } satisfies LayoutCluster;
   }).sort((left, right) => {
@@ -492,17 +501,17 @@ function placeClusters(clusters: LayoutCluster[]): Map<string, number> {
   for (const cluster of clusters) {
     const fallbackCenter =
       previousRight === Number.NEGATIVE_INFINITY
-        ? cluster.width / 2
-        : previousRight + CLUSTER_GAP + cluster.width / 2;
+        ? cluster.leftExtent
+        : previousRight + CLUSTER_GAP + cluster.leftExtent;
     const desiredCenter = cluster.desiredCenterX ?? fallbackCenter;
     const minimumCenter =
       previousRight === Number.NEGATIVE_INFINITY
         ? desiredCenter
-        : previousRight + CLUSTER_GAP + cluster.width / 2;
+        : previousRight + CLUSTER_GAP + cluster.leftExtent;
     const centerX = Math.max(desiredCenter, minimumCenter);
 
     centerXByClusterId.set(cluster.id, centerX);
-    previousRight = centerX + cluster.width / 2;
+    previousRight = centerX + cluster.rightExtent;
   }
 
   if (!hasAnchoredCluster) {
@@ -510,14 +519,14 @@ function placeClusters(clusters: LayoutCluster[]): Map<string, number> {
       Math.min(
         ...clusters.map((cluster) => {
           const centerX = centerXByClusterId.get(cluster.id) ?? 0;
-          return centerX - cluster.width / 2;
+          return centerX - cluster.leftExtent;
         }),
       ) ?? 0;
     const rightMost =
       Math.max(
         ...clusters.map((cluster) => {
           const centerX = centerXByClusterId.get(cluster.id) ?? 0;
-          return centerX + cluster.width / 2;
+          return centerX + cluster.rightExtent;
         }),
       ) ?? 0;
     const shift = -((leftMost + rightMost) / 2);
@@ -533,6 +542,153 @@ function placeClusters(clusters: LayoutCluster[]): Map<string, number> {
   return centerXByClusterId;
 }
 
+function getAnchoredClusterExtents(
+  blocks: LayoutBlock[],
+): {
+  leftExtent: number;
+  rightExtent: number;
+} {
+  let minLeft = Number.POSITIVE_INFINITY;
+  let maxRight = Number.NEGATIVE_INFINITY;
+
+  for (const [index, block] of blocks.entries()) {
+    const relativeAnchorCenter = getRelativeAnchorCenter(index, blocks.length);
+    const spouseSide = resolveSpouseSide(block, relativeAnchorCenter, blocks.length);
+    const { leftExtent, rightExtent } = getBlockExtents(block, spouseSide);
+
+    minLeft = Math.min(minLeft, relativeAnchorCenter - leftExtent);
+    maxRight = Math.max(maxRight, relativeAnchorCenter + rightExtent);
+  }
+
+  return {
+    leftExtent: -minLeft,
+    rightExtent: maxRight,
+  };
+}
+
+function layoutClusterMembers(
+  cluster: LayoutCluster,
+  clusterCenter: number,
+): Map<string, number> {
+  if (!cluster.anchoredToParents) {
+    const centerXByPersonId = new Map<string, number>();
+    let cursor = clusterCenter - cluster.width / 2;
+
+    for (const block of cluster.blocks) {
+      const blockCenters = layoutBlockMembers(block, cursor);
+
+      for (const [personId, centerX] of blockCenters) {
+        centerXByPersonId.set(personId, centerX);
+      }
+
+      cursor += block.width + CLUSTER_GAP;
+    }
+
+    return centerXByPersonId;
+  }
+
+  const centerXByPersonId = new Map<string, number>();
+
+  for (const [index, block] of cluster.blocks.entries()) {
+    const relativeAnchorCenter = getRelativeAnchorCenter(index, cluster.blocks.length);
+    const anchorCenter = clusterCenter + relativeAnchorCenter;
+    const spouseSide = resolveSpouseSide(
+      block,
+      relativeAnchorCenter,
+      cluster.blocks.length,
+    );
+    const blockCenters = layoutAnchoredBlockMembers(
+      block,
+      anchorCenter,
+      spouseSide,
+    );
+
+    for (const [personId, centerX] of blockCenters) {
+      centerXByPersonId.set(personId, centerX);
+    }
+  }
+
+  return centerXByPersonId;
+}
+
+function getRelativeAnchorCenter(
+  blockIndex: number,
+  blockCount: number,
+): number {
+  return (blockIndex - (blockCount - 1) / 2) * SIBLING_GAP;
+}
+
+function resolveSpouseSide(
+  block: LayoutBlock,
+  relativeAnchorCenter: number,
+  blockCount: number,
+): "left" | "right" | null {
+  if (block.personIds.length <= 1) {
+    return null;
+  }
+
+  if (blockCount === 1) {
+    return "right";
+  }
+
+  if (relativeAnchorCenter < 0) {
+    return "left";
+  }
+
+  return "right";
+}
+
+function getBlockExtents(
+  block: LayoutBlock,
+  spouseSide: "left" | "right" | null,
+): {
+  leftExtent: number;
+  rightExtent: number;
+} {
+  if (block.personIds.length <= 1 || spouseSide === null) {
+    return {
+      leftExtent: HALF_NODE_WIDTH,
+      rightExtent: HALF_NODE_WIDTH,
+    };
+  }
+
+  if (spouseSide === "left") {
+    return {
+      leftExtent: PARTNER_OUTER_EXTENT,
+      rightExtent: HALF_NODE_WIDTH,
+    };
+  }
+
+  return {
+    leftExtent: HALF_NODE_WIDTH,
+    rightExtent: PARTNER_OUTER_EXTENT,
+  };
+}
+
+function layoutAnchoredBlockMembers(
+  block: LayoutBlock,
+  anchorCenter: number,
+  spouseSide: "left" | "right" | null,
+): Map<string, number> {
+  const centerXByPersonId = new Map<string, number>();
+  const spouseIds = block.personIds.filter(
+    (personId) => personId !== block.anchorPersonId,
+  );
+
+  centerXByPersonId.set(block.anchorPersonId, anchorCenter);
+
+  if (spouseIds.length === 1 && spouseSide) {
+    const spouseCenter =
+      spouseSide === "left"
+        ? anchorCenter - PARTNER_CENTER_DISTANCE
+        : anchorCenter + PARTNER_CENTER_DISTANCE;
+
+    centerXByPersonId.set(spouseIds[0], spouseCenter);
+  }
+
+  return centerXByPersonId;
+}
+
 function layoutBlockMembers(
   block: LayoutBlock,
   blockStart: number,
@@ -541,8 +697,8 @@ function layoutBlockMembers(
   let cursor = blockStart;
 
   for (const personId of block.personIds) {
-    centerXByPersonId.set(personId, cursor + NODE_WIDTH / 2);
-    cursor += NODE_WIDTH + SPOUSE_GAP;
+    centerXByPersonId.set(personId, cursor + HALF_NODE_WIDTH);
+    cursor += PARTNER_CENTER_DISTANCE;
   }
 
   return centerXByPersonId;

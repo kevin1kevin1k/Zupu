@@ -269,6 +269,7 @@ button:disabled {
 .relationship-edge path {
   stroke: #4e6d59;
   stroke-width: 2;
+  stroke-dasharray: none;
 }
 
 .relationship-edge--spouse path {

@@ -5,6 +5,8 @@ import { buildFlowElements } from "../src/lib/tree.ts";
 import type { FamilyTreeDocument } from "../src/types/family";
 
 const NODE_WIDTH = 190;
+const SPOUSE_GAP = 28;
+const MIN_SAME_LEVEL_GAP = 72;
 
 function getCenterX(nodeId: string) {
   const { nodes } = buildFlowElements(sampleTree.people, sampleTree.relationships);
@@ -20,6 +22,17 @@ function getCenterXFromDocument(document: FamilyTreeDocument, nodeId: string) {
 
   assert.ok(node, `expected node ${nodeId} to exist`);
   return node.position.x + NODE_WIDTH / 2;
+}
+
+function getHorizontalGapFromDocument(
+  document: FamilyTreeDocument,
+  leftNodeId: string,
+  rightNodeId: string,
+) {
+  const leftCenterX = getCenterXFromDocument(document, leftNodeId);
+  const rightCenterX = getCenterXFromDocument(document, rightNodeId);
+
+  return rightCenterX - leftCenterX - NODE_WIDTH;
 }
 
 const recursiveSampleTree: FamilyTreeDocument = {
@@ -50,6 +63,44 @@ const recursiveSampleTree: FamilyTreeDocument = {
     { id: "r-user-user-child", type: "parent-child", fromPersonId: "p-user", toPersonId: "p-user-child" },
     { id: "r-brother-brother-child", type: "parent-child", fromPersonId: "p-brother", toPersonId: "p-brother-child" },
     { id: "r-spouse9-brother-child", type: "parent-child", fromPersonId: "p-spouse-9", toPersonId: "p-brother-child" },
+  ],
+};
+
+const sameLevelGapSampleTree: FamilyTreeDocument = {
+  version: 1,
+  people: [
+    { id: "p-grandpa", name: "王大山", gender: "male" },
+    { id: "p-grandma", name: "林春梅", gender: "female" },
+    { id: "p-father", name: "王志明", gender: "male" },
+    { id: "p-mother", name: "陳雅惠", gender: "female" },
+    { id: "p-user", name: "王小華", gender: "female" },
+    { id: "p-brother", name: "王小宇", gender: "male" },
+    { id: "p-spouse-9", name: "配偶9", gender: "other" },
+    { id: "p-user-child", name: "王王", gender: "male" },
+    { id: "p-user-child-spouse", name: "陳陳", gender: "female" },
+    { id: "p-user-child-11", name: "子女11", gender: "other" },
+    { id: "p-user-child-12", name: "子女12", gender: "other" },
+    { id: "p-brother-child-10", name: "子女10", gender: "other" },
+    { id: "p-brother-child-13", name: "子女13", gender: "other" },
+  ],
+  relationships: [
+    { id: "r-grandparents", type: "spouse", fromPersonId: "p-grandpa", toPersonId: "p-grandma" },
+    { id: "r-parents", type: "spouse", fromPersonId: "p-father", toPersonId: "p-mother" },
+    { id: "r-brother-spouse", type: "spouse", fromPersonId: "p-brother", toPersonId: "p-spouse-9" },
+    { id: "r-user-child-spouse", type: "spouse", fromPersonId: "p-user-child", toPersonId: "p-user-child-spouse" },
+    { id: "r-grandpa-father", type: "parent-child", fromPersonId: "p-grandpa", toPersonId: "p-father" },
+    { id: "r-grandma-father", type: "parent-child", fromPersonId: "p-grandma", toPersonId: "p-father" },
+    { id: "r-father-user", type: "parent-child", fromPersonId: "p-father", toPersonId: "p-user" },
+    { id: "r-mother-user", type: "parent-child", fromPersonId: "p-mother", toPersonId: "p-user" },
+    { id: "r-father-brother", type: "parent-child", fromPersonId: "p-father", toPersonId: "p-brother" },
+    { id: "r-mother-brother", type: "parent-child", fromPersonId: "p-mother", toPersonId: "p-brother" },
+    { id: "r-user-user-child", type: "parent-child", fromPersonId: "p-user", toPersonId: "p-user-child" },
+    { id: "r-user-user-child-11", type: "parent-child", fromPersonId: "p-user", toPersonId: "p-user-child-11" },
+    { id: "r-user-user-child-12", type: "parent-child", fromPersonId: "p-user", toPersonId: "p-user-child-12" },
+    { id: "r-brother-brother-child-10", type: "parent-child", fromPersonId: "p-brother", toPersonId: "p-brother-child-10" },
+    { id: "r-spouse9-brother-child-10", type: "parent-child", fromPersonId: "p-spouse-9", toPersonId: "p-brother-child-10" },
+    { id: "r-brother-brother-child-13", type: "parent-child", fromPersonId: "p-brother", toPersonId: "p-brother-child-13" },
+    { id: "r-spouse9-brother-child-13", type: "parent-child", fromPersonId: "p-spouse-9", toPersonId: "p-brother-child-13" },
   ],
 };
 
@@ -107,5 +158,41 @@ test("deeper descendants recursively expand sibling spacing while keeping center
   assert.ok(
     brotherChildLeft >= userChildRight,
     "expected recursive subtree expansion to prevent cousin generation overlap",
+  );
+});
+
+test("non-spouse people on the same generation keep a larger minimum gap than spouses", () => {
+  const cousinGap = getHorizontalGapFromDocument(
+    sameLevelGapSampleTree,
+    "p-user-child-12",
+    "p-brother-child-10",
+  );
+  const spouseGap = getHorizontalGapFromDocument(
+    sameLevelGapSampleTree,
+    "p-user-child-spouse",
+    "p-user-child",
+  );
+  const parentGenerationCenterX =
+    (getCenterXFromDocument(sameLevelGapSampleTree, "p-father") +
+      getCenterXFromDocument(sameLevelGapSampleTree, "p-mother")) / 2;
+  const userCenterX = getCenterXFromDocument(sameLevelGapSampleTree, "p-user");
+  const brotherCenterX = getCenterXFromDocument(sameLevelGapSampleTree, "p-brother");
+
+  assert.ok(
+    cousinGap >= MIN_SAME_LEVEL_GAP,
+    `expected same-generation non-spouse gap to be at least ${MIN_SAME_LEVEL_GAP}, got ${cousinGap}`,
+  );
+  assert.ok(
+    cousinGap > spouseGap,
+    `expected non-spouse gap ${cousinGap} to be greater than spouse gap ${spouseGap}`,
+  );
+  assert.equal(spouseGap, SPOUSE_GAP);
+  assert.equal(
+    (userCenterX + brotherCenterX) / 2,
+    parentGenerationCenterX,
+  );
+  assert.equal(
+    Math.abs(userCenterX - parentGenerationCenterX),
+    Math.abs(brotherCenterX - parentGenerationCenterX),
   );
 });

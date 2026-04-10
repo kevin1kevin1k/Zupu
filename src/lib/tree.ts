@@ -8,6 +8,7 @@ const RANK_SPACING = 184;
 const TOP_PADDING = 72;
 const SPOUSE_GAP = 28;
 const CLUSTER_GAP = 72;
+const MIN_SAME_LEVEL_GAP = 72;
 const HALF_NODE_WIDTH = NODE_WIDTH / 2;
 const PARTNER_CENTER_DISTANCE = NODE_WIDTH + SPOUSE_GAP;
 const PARTNER_OUTER_EXTENT = PARTNER_CENTER_DISTANCE + HALF_NODE_WIDTH;
@@ -191,6 +192,8 @@ type SpouseSide = "left" | "right" | null;
 type MeasuredBlock = {
   spouseSide: SpouseSide;
   familyCenterOffset: number;
+  layerLeftByDepth: Map<number, number>;
+  layerRightByDepth: Map<number, number>;
   leftExtent: number;
   rightExtent: number;
   childPlacements: {
@@ -365,6 +368,12 @@ function resolvePersonCenterX(
 
     const localExtents = getBlockExtents(block, spouseSide);
     const familyCenterOffset = getFamilyCenterOffset(block, spouseSide);
+    const layerLeftByDepth = new Map<number, number>([
+      [0, -localExtents.leftExtent],
+    ]);
+    const layerRightByDepth = new Map<number, number>([
+      [0, localExtents.rightExtent],
+    ]);
     const childBlocks = [...(childrenByBlockId.get(blockId) ?? [])].sort(
       (left, right) => left.sortIndex - right.sortIndex,
     );
@@ -399,7 +408,7 @@ function resolvePersonCenterX(
 
           return Math.max(
             maximumSpacing,
-            previousMeasure.rightExtent + currentMeasure.leftExtent,
+            getRequiredCenterDistance(previousMeasure, currentMeasure),
           );
         },
         SIBLING_GAP,
@@ -423,6 +432,14 @@ function resolvePersonCenterX(
           childClusterRight,
           offsetFromFamilyCenter + childMeasure.measure.rightExtent,
         );
+
+        mergeMeasuredLayers(
+          layerLeftByDepth,
+          layerRightByDepth,
+          childMeasure.measure,
+          familyCenterOffset + offsetFromFamilyCenter,
+          1,
+        );
       }
     }
 
@@ -442,6 +459,8 @@ function resolvePersonCenterX(
     const measuredBlock = {
       spouseSide,
       familyCenterOffset,
+      layerLeftByDepth,
+      layerRightByDepth,
       leftExtent: -subtreeLeft,
       rightExtent: subtreeRight,
       childPlacements,
@@ -502,11 +521,22 @@ function resolvePersonCenterX(
   let previousRight = Number.NEGATIVE_INFINITY;
   const rootCenterByBlockId = new Map<string, number>();
 
-  for (const descriptor of rootDescriptors) {
-    const centerX =
-      previousRight === Number.NEGATIVE_INFINITY
-        ? descriptor.measure.leftExtent
-        : previousRight + CLUSTER_GAP + descriptor.measure.leftExtent;
+  for (const [index, descriptor] of rootDescriptors.entries()) {
+    if (index === 0) {
+      rootCenterByBlockId.set(descriptor.block.id, 0);
+      previousRight = descriptor.measure.rightExtent;
+      continue;
+    }
+
+    const previousDescriptor = rootDescriptors[index - 1]!;
+    const previousCenterX = rootCenterByBlockId.get(previousDescriptor.block.id) ?? 0;
+    const centerDistance = Math.max(
+      getRequiredCenterDistance(previousDescriptor.measure, descriptor.measure),
+      previousDescriptor.measure.rightExtent +
+        CLUSTER_GAP +
+        descriptor.measure.leftExtent,
+    );
+    const centerX = previousCenterX + centerDistance;
 
     rootCenterByBlockId.set(descriptor.block.id, centerX);
     previousRight = centerX + descriptor.measure.rightExtent;
@@ -537,6 +567,63 @@ function resolvePersonCenterX(
   }
 
   return centerXByPersonId;
+}
+
+function mergeMeasuredLayers(
+  layerLeftByDepth: Map<number, number>,
+  layerRightByDepth: Map<number, number>,
+  measuredBlock: MeasuredBlock,
+  offsetX: number,
+  depthOffset: number,
+) {
+  for (const [depth, left] of measuredBlock.layerLeftByDepth.entries()) {
+    const targetDepth = depth + depthOffset;
+    const shiftedLeft = left + offsetX;
+    const existingLeft = layerLeftByDepth.get(targetDepth);
+
+    layerLeftByDepth.set(
+      targetDepth,
+      existingLeft === undefined ? shiftedLeft : Math.min(existingLeft, shiftedLeft),
+    );
+  }
+
+  for (const [depth, right] of measuredBlock.layerRightByDepth.entries()) {
+    const targetDepth = depth + depthOffset;
+    const shiftedRight = right + offsetX;
+    const existingRight = layerRightByDepth.get(targetDepth);
+
+    layerRightByDepth.set(
+      targetDepth,
+      existingRight === undefined ? shiftedRight : Math.max(existingRight, shiftedRight),
+    );
+  }
+}
+
+function getRequiredCenterDistance(
+  leftBlock: MeasuredBlock,
+  rightBlock: MeasuredBlock,
+): number {
+  let requiredDistance = 0;
+  const allDepths = new Set<number>([
+    ...leftBlock.layerRightByDepth.keys(),
+    ...rightBlock.layerLeftByDepth.keys(),
+  ]);
+
+  for (const depth of allDepths) {
+    const leftRight = leftBlock.layerRightByDepth.get(depth);
+    const rightLeft = rightBlock.layerLeftByDepth.get(depth);
+
+    if (leftRight === undefined || rightLeft === undefined) {
+      continue;
+    }
+
+    requiredDistance = Math.max(
+      requiredDistance,
+      leftRight - rightLeft + MIN_SAME_LEVEL_GAP,
+    );
+  }
+
+  return requiredDistance;
 }
 
 function buildParentIdsByPersonId(

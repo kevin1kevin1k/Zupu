@@ -14,6 +14,7 @@ import {
   buildFlowElements,
   createBlankPerson,
   createRelationship,
+  deletePersonFromTree,
   getDocumentExport,
   getNextPersonName,
   getSpouseId,
@@ -100,6 +101,31 @@ function App() {
     setPeople((current) => [...current, newPerson]);
     setRelationships((current) => [...current, ...nextRelationships]);
     setSelectedPersonId(newPerson.id);
+  }
+
+  function deleteSelectedPerson() {
+    if (!selectedPerson) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `確定要刪除「${selectedPerson.name}」嗎？這會移除此人物，以及所有與他/她直接相關的關係；其他人物會保留。`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const nextDocument = deletePersonFromTree(
+      people,
+      relationships,
+      selectedPerson.id,
+    );
+
+    setPeople(nextDocument.people);
+    setRelationships(nextDocument.relationships);
+    setSelectedPersonId(nextDocument.people[0]?.id ?? null);
+    setImportMessage("已刪除人物並移除相關關係。");
   }
 
   function exportJson() {
@@ -230,6 +256,13 @@ function App() {
                   ? "此人物已經有一位配偶；第一版原型不再新增第二位配偶。"
                   : "此人物目前沒有配偶。"}
               </p>
+              <button
+                className="button-danger"
+                onClick={deleteSelectedPerson}
+                type="button"
+              >
+                刪除人物
+              </button>
             </div>
           ) : (
             <p className="panel__hint">請先點選畫布上的人物節點。</p>
@@ -239,7 +272,7 @@ function App() {
         <section className="panel">
           <h2>原型範圍</h2>
           <ul className="scope-list">
-            <li>有：新增人物、配偶、子女，畫布重排，JSON 匯入匯出。</li>
+            <li>有：新增、編輯、刪除人物，建立配偶與子女，畫布重排，JSON 匯入匯出。</li>
             <li>沒有：後端、登入、搜尋、稱謂、編輯紀錄、資料庫。</li>
           </ul>
         </section>

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { sampleTree } from "../src/data/sampleTree.ts";
-import { buildFlowElements } from "../src/lib/tree.ts";
+import { buildFlowElements, deletePersonFromTree } from "../src/lib/tree.ts";
 import type { FamilyTreeDocument } from "../src/types/family";
 
 const NODE_WIDTH = 190;
@@ -194,5 +194,56 @@ test("non-spouse people on the same generation keep a larger minimum gap than sp
   assert.equal(
     Math.abs(userCenterX - parentGenerationCenterX),
     Math.abs(brotherCenterX - parentGenerationCenterX),
+  );
+});
+
+test("deleting a standalone person removes only that person", () => {
+  const standaloneTree: FamilyTreeDocument = {
+    version: 1,
+    people: [
+      { id: "p-1", name: "人物 1", gender: "male" },
+      { id: "p-2", name: "人物 2", gender: "female" },
+    ],
+    relationships: [],
+  };
+
+  const result = deletePersonFromTree(
+    standaloneTree.people,
+    standaloneTree.relationships,
+    "p-2",
+  );
+
+  assert.deepEqual(
+    result.people.map((person) => person.id),
+    ["p-1"],
+  );
+  assert.deepEqual(result.relationships, []);
+});
+
+test("deleting a person removes direct relationships but keeps the remaining relatives", () => {
+  const result = deletePersonFromTree(
+    sampleTree.people,
+    sampleTree.relationships,
+    "p-father",
+  );
+
+  assert.ok(!result.people.some((person) => person.id === "p-father"));
+  assert.ok(result.people.some((person) => person.id === "p-mother"));
+  assert.ok(result.people.some((person) => person.id === "p-user"));
+  assert.ok(result.people.some((person) => person.id === "p-brother"));
+
+  assert.ok(
+    result.relationships.every(
+      (relationship) =>
+        relationship.fromPersonId !== "p-father" &&
+        relationship.toPersonId !== "p-father",
+    ),
+  );
+  assert.ok(
+    result.relationships.every(
+      (relationship) =>
+        relationship.fromPersonId === "p-mother" ||
+        relationship.toPersonId !== "p-user",
+    ),
   );
 });

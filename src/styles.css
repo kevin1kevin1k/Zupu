@@ -66,6 +66,11 @@ button:disabled {
   color: #243228;
 }
 
+.button-danger {
+  background: linear-gradient(135deg, #7a2d2d, #a04635);
+  color: #fff7f3;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 360px minmax(0, 1fr);

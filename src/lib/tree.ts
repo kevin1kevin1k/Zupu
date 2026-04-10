@@ -47,6 +47,24 @@ export function getDocumentExport(
   };
 }
 
+export function deletePersonFromTree(
+  people: Person[],
+  relationships: Relationship[],
+  personId: string,
+): {
+  people: Person[];
+  relationships: Relationship[];
+} {
+  return {
+    people: people.filter((person) => person.id !== personId),
+    relationships: relationships.filter(
+      (relationship) =>
+        relationship.fromPersonId !== personId &&
+        relationship.toPersonId !== personId,
+    ),
+  };
+}
+
 export function parseImportedDocument(input: string): FamilyTreeDocument {
   const parsed = JSON.parse(input) as Partial<FamilyTreeDocument>;
 

@@ -1,4 +1,6 @@
 .spectra/
+.agents/
+.claude/
 openspec/.vector-search.db*
 node_modules/
 dist/

@@ -40,7 +40,11 @@ function App() {
 
   const selectedPerson = people.find((person) => person.id === selectedPersonId) ?? null;
   const selectedSpouseId = selectedPersonId ? getSpouseId(selectedPersonId, relationships) : null;
-  const { nodes, edges } = buildFlowElements(people, relationships);
+  const { nodes, edges } = buildFlowElements(
+    people,
+    relationships,
+    selectedPersonId,
+  );
 
   useEffect(() => {
     requestAnimationFrame(() => {

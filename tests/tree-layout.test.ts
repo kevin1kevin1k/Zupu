@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { sampleTree } from "../src/data/sampleTree.ts";
 import { buildFlowElements, deletePersonFromTree } from "../src/lib/tree.ts";
 import type { FamilyTreeDocument } from "../src/types/family";
@@ -246,4 +247,37 @@ test("deleting a person removes direct relationships but keeps the remaining rel
         relationship.toPersonId !== "p-user",
     ),
   );
+});
+
+test("selected nodes have a strong readable highlight style", () => {
+  const styles = readFileSync(
+    new URL("../src/styles.css", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(styles, /\.person-node--selected\s*\{[\s\S]*0 0 0 4px/);
+  assert.doesNotMatch(styles, /\.person-node--selected\s*\{[\s\S]*transform:/);
+  assert.match(
+    styles,
+    /\.person-node--selected\s+\.person-node__content strong\s*\{/,
+  );
+  assert.match(
+    styles,
+    /\.person-node--selected\s+\.person-node__content span\s*\{/,
+  );
+});
+
+test("buildFlowElements marks only the selected person node as selected", () => {
+  const { nodes } = buildFlowElements(
+    sampleTree.people,
+    sampleTree.relationships,
+    "p-user",
+  );
+  const selectedNode = nodes.find((node) => node.id === "p-user");
+  const unselectedNode = nodes.find((node) => node.id === "p-brother");
+
+  assert.ok(selectedNode, "expected selected node to exist");
+  assert.ok(unselectedNode, "expected comparison node to exist");
+  assert.equal(selectedNode.selected, true);
+  assert.notEqual(unselectedNode.selected, true);
 });

@@ -118,6 +118,7 @@ function assertRelationship(raw: unknown): Relationship {
 export function buildFlowElements(
   people: Person[],
   relationships: Relationship[],
+  selectedPersonId: string | null = null,
 ): {
   nodes: PersonFlowNode[];
   edges: Edge[];
@@ -149,6 +150,7 @@ export function buildFlowElements(
         gender: person.gender,
         photoUrl: person.photoUrl,
       },
+      selected: person.id === selectedPersonId,
       draggable: false,
     } satisfies PersonFlowNode;
   });

@@ -9,15 +9,13 @@ type PersonNodeData = {
 
 type PersonFlowNode = Node<PersonNodeData, "person">;
 
-const genderLabel: Record<Gender, string> = {
-  male: "男性",
-  female: "女性",
-  other: "其他",
-};
-
 export function PersonNode({ data, selected }: NodeProps<PersonFlowNode>) {
+  const genderClass = data.gender === "other" ? "unknown" : data.gender;
+
   return (
-    <div className={`person-node ${selected ? "person-node--selected" : ""}`}>
+    <div
+      className={`person-node person-node--${genderClass} ${selected ? "person-node--selected" : ""}`}
+    >
       <Handle className="person-node__handle" position={Position.Top} type="target" />
       <div className="person-node__avatar">
         {data.photoUrl ? (
@@ -28,7 +26,6 @@ export function PersonNode({ data, selected }: NodeProps<PersonFlowNode>) {
       </div>
       <div className="person-node__content">
         <strong>{data.name}</strong>
-        <span>{genderLabel[data.gender]}</span>
       </div>
       <Handle className="person-node__handle" position={Position.Bottom} type="source" />
     </div>

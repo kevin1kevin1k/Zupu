@@ -261,10 +261,6 @@ test("selected nodes have a strong readable highlight style", () => {
     styles,
     /\.person-node--selected\s+\.person-node__content strong\s*\{/,
   );
-  assert.match(
-    styles,
-    /\.person-node--selected\s+\.person-node__content span\s*\{/,
-  );
 });
 
 test("buildFlowElements marks only the selected person node as selected", () => {
@@ -280,4 +276,27 @@ test("buildFlowElements marks only the selected person node as selected", () => 
   assert.ok(unselectedNode, "expected comparison node to exist");
   assert.equal(selectedNode.selected, true);
   assert.notEqual(unselectedNode.selected, true);
+});
+
+test("person nodes use gender color classes instead of rendering gender text", () => {
+  const componentSource = readFileSync(
+    new URL("../src/components/PersonNode.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(componentSource, /const genderClass = data\.gender === "other" \? "unknown" : data\.gender;/);
+  assert.match(componentSource, /person-node person-node--\$\{genderClass\}/);
+  assert.doesNotMatch(componentSource, /genderLabel/);
+  assert.doesNotMatch(componentSource, /<span>\{genderLabel\[data\.gender\]\}<\/span>/);
+});
+
+test("gendered node styles exist for male female and unknown cards", () => {
+  const styles = readFileSync(
+    new URL("../src/styles.css", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(styles, /\.person-node--male\s*\{/);
+  assert.match(styles, /\.person-node--female\s*\{/);
+  assert.match(styles, /\.person-node--unknown\s*\{/);
 });

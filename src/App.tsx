@@ -239,7 +239,7 @@ function App() {
                 >
                   <option value="male">男性</option>
                   <option value="female">女性</option>
-                  <option value="other">其他</option>
+                  <option value="other">未設定</option>
                 </select>
               </label>
               <label>

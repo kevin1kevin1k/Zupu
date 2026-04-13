@@ -224,6 +224,21 @@ button:disabled {
     border-color 160ms ease;
 }
 
+.person-node--male {
+  background: linear-gradient(180deg, #f5fbff 0%, #e2f0fb 100%);
+  border-color: rgba(111, 154, 191, 0.32);
+}
+
+.person-node--female {
+  background: linear-gradient(180deg, #fff7fb 0%, #f8e1ec 100%);
+  border-color: rgba(188, 118, 153, 0.3);
+}
+
+.person-node--unknown {
+  background: linear-gradient(180deg, #fbfbfa 0%, #e8e8e5 100%);
+  border-color: rgba(116, 121, 116, 0.28);
+}
+
 .person-node--selected {
   border-color: rgba(36, 84, 57, 0.52);
   box-shadow:
@@ -251,6 +266,21 @@ button:disabled {
   font-weight: 700;
 }
 
+.person-node--male .person-node__avatar {
+  background: linear-gradient(145deg, #cfe6f6, #bdd8eb);
+  color: #1f4b67;
+}
+
+.person-node--female .person-node__avatar {
+  background: linear-gradient(145deg, #f3d7e5, #e6bfd3);
+  color: #7d3658;
+}
+
+.person-node--unknown .person-node__avatar {
+  background: linear-gradient(145deg, #d9ddd9, #c8cdc8);
+  color: #425047;
+}
+
 .person-node__avatar img {
   width: 100%;
   height: 100%;
@@ -271,15 +301,6 @@ button:disabled {
 
 .person-node--selected .person-node__content strong {
   color: #17261d;
-}
-
-.person-node__content span {
-  color: #4c5d4f;
-  font-size: 0.9rem;
-}
-
-.person-node--selected .person-node__content span {
-  color: #35533f;
 }
 
 .person-node__handle {

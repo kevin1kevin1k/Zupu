@@ -300,3 +300,15 @@ test("gendered node styles exist for male female and unknown cards", () => {
   assert.match(styles, /\.person-node--female\s*\{/);
   assert.match(styles, /\.person-node--unknown\s*\{/);
 });
+
+test("app UI omits prototype-only explanatory copy and person ids", () => {
+  const appSource = readFileSync(
+    new URL("../src/App.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.doesNotMatch(appSource, /人物 ID/);
+  assert.doesNotMatch(appSource, /原型範圍/);
+  assert.doesNotMatch(appSource, /先用純前端資料流驗證新增人物、配偶與子女，以及自動排版是否夠清楚可讀/);
+  assert.doesNotMatch(appSource, /節點可點選，視窗可縮放平移。這一版先把「能看、能加、能重排」做出來。/);
+});

@@ -175,11 +175,7 @@ function App() {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="sidebar__hero">
-          <span className="sidebar__eyebrow">Local Prototype</span>
           <h1>Zupu 族譜原型</h1>
-          <p>
-            先用純前端資料流驗證新增人物、配偶與子女，以及自動排版是否夠清楚可讀。
-          </p>
         </div>
 
         <section className="panel">
@@ -251,10 +247,6 @@ function App() {
                   value={selectedPerson.photoUrl ?? ""}
                 />
               </label>
-              <div className="selection-meta">
-                <span>人物 ID</span>
-                <code>{selectedPerson.id}</code>
-              </div>
               <p className="panel__hint">
                 {selectedSpouseId
                   ? "此人物已經有一位配偶；第一版原型不再新增第二位配偶。"
@@ -272,25 +264,11 @@ function App() {
             <p className="panel__hint">請先點選畫布上的人物節點。</p>
           )}
         </section>
-
-        <section className="panel">
-          <h2>原型範圍</h2>
-          <ul className="scope-list">
-            <li>有：新增、編輯、刪除人物，建立配偶與子女，畫布重排，JSON 匯入匯出。</li>
-            <li>沒有：後端、登入、搜尋、稱謂、編輯紀錄、資料庫。</li>
-          </ul>
-        </section>
       </aside>
 
       <main className="canvas-stage">
         <div className="canvas-stage__header">
-          <div>
-            <span className="canvas-stage__label">Family Canvas</span>
-            <h2>手機優先的族譜可視化原型</h2>
-          </div>
-          <p>
-            節點可點選，視窗可縮放平移。這一版先把「能看、能加、能重排」做出來。
-          </p>
+          <h2>手機優先的族譜可視化原型</h2>
         </div>
 
         <div className="flow-wrapper">

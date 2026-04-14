@@ -107,13 +107,79 @@ const sameLevelGapSampleTree: FamilyTreeDocument = {
 
 test("parent-child edges are static solid connectors", () => {
   const { edges } = buildFlowElements(sampleTree.people, sampleTree.relationships);
-  const parentChildEdges = edges.filter((edge) => edge.type === "smoothstep");
+  const parentChildEdges = edges.filter((edge) => edge.type === "family");
 
   assert.ok(parentChildEdges.length > 0);
 
   for (const edge of parentChildEdges) {
     assert.equal(edge.animated, false);
   }
+});
+
+test("children with the same parents are grouped into one family edge", () => {
+  const { edges } = buildFlowElements(sampleTree.people, sampleTree.relationships);
+  const familyEdges = edges.filter((edge) => edge.type === "family");
+  const familyEdgeData = familyEdges.map((edge) => {
+    const data = edge.data as {
+      parentIds: string[];
+      childIds: string[];
+    };
+
+    return {
+      parentIds: data.parentIds,
+      childIds: data.childIds,
+    };
+  });
+
+  assert.equal(familyEdges.length, 2);
+  assert.deepEqual(
+    familyEdgeData,
+    [
+      { parentIds: ["p-grandpa", "p-grandma"], childIds: ["p-father"] },
+      { parentIds: ["p-father", "p-mother"], childIds: ["p-user", "p-brother"] },
+    ],
+  );
+});
+
+test("family edge geometry is included for custom bus rendering", () => {
+  const { edges } = buildFlowElements(sampleTree.people, sampleTree.relationships);
+  const familyEdge = edges.find((edge) => edge.type === "family");
+  const data = familyEdge?.data as {
+    parentIds: string[];
+    childIds: string[];
+    parentCenters: number[];
+    childCenters: number[];
+    familyCenterX: number;
+    parentBottomY: number;
+    parentJoinY: number;
+    childBusY: number;
+    childTopY: number;
+  } | undefined;
+
+  assert.ok(data, "expected a family edge with rendering geometry");
+  assert.equal(data.parentIds.length, data.parentCenters.length);
+  assert.equal(data.childIds.length, data.childCenters.length);
+  assert.ok(typeof data.familyCenterX === "number");
+  assert.ok(data.parentJoinY > data.parentBottomY);
+  assert.ok(data.childTopY > data.childBusY);
+});
+
+test("family edges anchor married children by the child person instead of the spouse block", () => {
+  const { edges } = buildFlowElements(recursiveSampleTree.people, recursiveSampleTree.relationships);
+  const marriedChildFamilyEdge = edges.find((edge) => {
+    if (edge.type !== "family") {
+      return false;
+    }
+
+    const data = edge.data as { parentIds: string[]; childIds: string[] };
+    return data.parentIds.join("|") === "p-brother|p-spouse-9";
+  });
+
+  assert.ok(marriedChildFamilyEdge, "expected family edge for the married child family");
+  assert.deepEqual(
+    (marriedChildFamilyEdge.data as { childIds: string[] }).childIds,
+    ["p-brother-child"],
+  );
 });
 
 test("a married child stays centered under that child's parents", () => {

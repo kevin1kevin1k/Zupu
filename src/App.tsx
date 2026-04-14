@@ -8,6 +8,7 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import { sampleTree } from "./data/sampleTree";
+import { FamilyEdge } from "./components/FamilyEdge";
 import { PersonNode } from "./components/PersonNode";
 import { SpouseEdge } from "./components/SpouseEdge";
 import {
@@ -27,6 +28,7 @@ const nodeTypes = {
 };
 
 const edgeTypes: EdgeTypes = {
+  family: FamilyEdge,
   spouse: SpouseEdge,
 };
 

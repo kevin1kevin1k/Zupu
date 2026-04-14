@@ -13,6 +13,8 @@ const HALF_NODE_WIDTH = NODE_WIDTH / 2;
 const PARTNER_CENTER_DISTANCE = NODE_WIDTH + SPOUSE_GAP;
 const PARTNER_OUTER_EXTENT = PARTNER_CENTER_DISTANCE + HALF_NODE_WIDTH;
 const SIBLING_GAP = NODE_WIDTH + CLUSTER_GAP;
+const FAMILY_PARENT_JOIN_OFFSET = 18;
+const FAMILY_CHILD_JOIN_OFFSET = 18;
 
 export function createBlankPerson(name: string, gender: Gender): Person {
   return {
@@ -155,15 +157,25 @@ export function buildFlowElements(
     } satisfies PersonFlowNode;
   });
 
-  const edges = relationships.map((relationship) => ({
-    id: relationship.id,
-    source: relationship.fromPersonId,
-    target: relationship.toPersonId,
-    type: relationship.type === "spouse" ? "spouse" : "smoothstep",
-    animated: false,
-    className:
-      relationship.type === "spouse" ? "relationship-edge relationship-edge--spouse" : "relationship-edge",
-  }));
+  const spouseEdges = relationships
+    .filter((relationship) => relationship.type === "spouse")
+    .map((relationship) => ({
+      id: relationship.id,
+      source: relationship.fromPersonId,
+      target: relationship.toPersonId,
+      type: "spouse",
+      animated: false,
+      className: "relationship-edge relationship-edge--spouse",
+    } satisfies Edge));
+
+  const familyEdges = buildFamilyEdges(
+    people,
+    relationships,
+    groupByPersonId,
+    generationByGroupId,
+    personCenterXById,
+  );
+  const edges = [...spouseEdges, ...familyEdges];
 
   return { nodes, edges };
 }
@@ -221,6 +233,18 @@ type MeasuredBlock = {
     offsetFromFamilyCenter: number;
     spouseSide: SpouseSide;
   }[];
+};
+
+type FamilyEdgeData = {
+  parentIds: string[];
+  childIds: string[];
+  parentCenters: number[];
+  childCenters: number[];
+  familyCenterX: number;
+  parentBottomY: number;
+  parentJoinY: number;
+  childBusY: number;
+  childTopY: number;
 };
 
 function createSpouseGroups(
@@ -859,4 +883,114 @@ function groupBy<T, TKey>(
   }
 
   return grouped;
+}
+
+function buildFamilyEdges(
+  people: Person[],
+  relationships: Relationship[],
+  groupByPersonId: Map<string, string>,
+  generationByGroupId: Map<string, number>,
+  personCenterXById: Map<string, number>,
+): Edge<FamilyEdgeData>[] {
+  const personOrderById = new Map(
+    people.map((person, index) => [person.id, index]),
+  );
+  const parentIdsByPersonId = buildParentIdsByPersonId(people, relationships);
+  const familyGroups = new Map<
+    string,
+    {
+      parentIds: string[];
+      childIds: string[];
+      sortIndex: number;
+      generation: number;
+    }
+  >();
+
+  for (const person of people) {
+    const parentIds = [...(parentIdsByPersonId.get(person.id) ?? [])].sort(
+      (left, right) =>
+        (personOrderById.get(left) ?? 0) - (personOrderById.get(right) ?? 0),
+    );
+
+    if (parentIds.length === 0) {
+      continue;
+    }
+
+    const signature = parentIds.join("|");
+    const generation = generationByGroupId.get(groupByPersonId.get(person.id) ?? person.id) ?? 0;
+    const existingGroup = familyGroups.get(signature);
+
+    if (!existingGroup) {
+      familyGroups.set(signature, {
+        parentIds,
+        childIds: [person.id],
+        sortIndex: personOrderById.get(person.id) ?? 0,
+        generation,
+      });
+      continue;
+    }
+
+    existingGroup.childIds.push(person.id);
+    existingGroup.sortIndex = Math.min(
+      existingGroup.sortIndex,
+      personOrderById.get(person.id) ?? existingGroup.sortIndex,
+    );
+  }
+
+  return [...familyGroups.values()]
+    .sort((left, right) =>
+      left.generation - right.generation || left.sortIndex - right.sortIndex,
+    )
+    .map((familyGroup) => {
+      const parentCenters = familyGroup.parentIds
+        .map((parentId) => ({
+          id: parentId,
+          centerX: personCenterXById.get(parentId) ?? 0,
+        }))
+        .sort((left, right) => left.centerX - right.centerX);
+      const childCenters = familyGroup.childIds
+        .map((childId) => ({
+          id: childId,
+          centerX: personCenterXById.get(childId) ?? 0,
+        }))
+        .sort((left, right) => left.centerX - right.centerX);
+      const parentGeneration =
+        generationByGroupId.get(groupByPersonId.get(familyGroup.parentIds[0]) ?? familyGroup.parentIds[0]) ?? 0;
+      const childGeneration =
+        generationByGroupId.get(groupByPersonId.get(familyGroup.childIds[0]) ?? familyGroup.childIds[0]) ?? 0;
+      const parentCenterY = TOP_PADDING + parentGeneration * RANK_SPACING;
+      const childCenterY = TOP_PADDING + childGeneration * RANK_SPACING;
+      const parentBottomY = parentCenterY + NODE_HEIGHT / 2;
+      const childTopY = childCenterY - NODE_HEIGHT / 2;
+      const familyCenterX =
+        parentCenters.length === 1
+          ? parentCenters[0]!.centerX
+          : parentCenters.reduce((sum, parent) => sum + parent.centerX, 0) /
+            parentCenters.length;
+      const parentJoinY = parentBottomY + FAMILY_PARENT_JOIN_OFFSET;
+      const childBusY = Math.max(
+        parentJoinY + 18,
+        childTopY - FAMILY_CHILD_JOIN_OFFSET,
+      );
+
+      return {
+        id: `family:${familyGroup.parentIds.join("|")}=>${familyGroup.childIds.join("|")}`,
+        source: familyGroup.parentIds[0]!,
+        target: familyGroup.childIds[0]!,
+        type: "family",
+        animated: false,
+        className: "relationship-edge relationship-edge--family",
+        data: {
+          parentIds: parentCenters.map((parent) => parent.id),
+          childIds: childCenters.map((child) => child.id),
+          parentCenters: parentCenters.map((parent) => parent.centerX),
+          childCenters: childCenters.map((child) => child.centerX),
+          familyCenterX,
+          parentBottomY,
+          parentJoinY,
+          childBusY,
+          childTopY,
+        },
+      } satisfies Edge<FamilyEdgeData>;
+    });
 }

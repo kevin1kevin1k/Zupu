@@ -341,6 +341,13 @@ button:disabled {
   stroke: #4e6d59;
   stroke-width: 2;
   stroke-dasharray: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.relationship-edge--family path {
+  stroke: #4e6d59;
+  stroke-width: 2.2;
 }
 
 .relationship-edge--spouse path {

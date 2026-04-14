@@ -238,9 +238,9 @@ function App() {
           </p>
         </section>
 
-        <section className="panel">
-          <h2>人物資料</h2>
-          {selectedPerson ? (
+        {selectedPerson ? (
+          <section className="panel">
+            <h2>人物資料</h2>
             <div className="form-stack">
               <label>
                 <span>姓名</span>
@@ -296,10 +296,8 @@ function App() {
                 刪除人物
               </button>
             </div>
-          ) : (
-            <p className="panel__hint">請先點選畫布上的人物節點。</p>
-          )}
-        </section>
+          </section>
+        ) : null}
       </aside>
 
       <main className="canvas-stage">
@@ -321,6 +319,9 @@ function App() {
             nodes={nodes}
             onNodeClick={(_, node) => {
               setSelectedPersonId(node.id);
+            }}
+            onPaneClick={() => {
+              setSelectedPersonId(null);
             }}
             proOptions={{ hideAttribution: true }}
           >

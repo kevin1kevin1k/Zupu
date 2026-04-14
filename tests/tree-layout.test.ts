@@ -350,3 +350,22 @@ test("mobile toolbar does not contain spouse or child actions", () => {
   assert.doesNotMatch(mobileToolbarSection[0], /新增配偶/);
   assert.doesNotMatch(mobileToolbarSection[0], /新增子女/);
 });
+
+test("clicking the flow pane clears the selected person", () => {
+  const appSource = readFileSync(
+    new URL("../src/App.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(appSource, /onPaneClick=\{\(\) => \{\s*setSelectedPersonId\(null\);?\s*\}\}/);
+});
+
+test("person detail panel is hidden instead of showing an empty-state hint", () => {
+  const appSource = readFileSync(
+    new URL("../src/App.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.doesNotMatch(appSource, /請先點選畫布上的人物節點。/);
+  assert.match(appSource, /\{selectedPerson \? \(\s*<section className="panel">/);
+});

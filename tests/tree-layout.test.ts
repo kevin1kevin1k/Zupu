@@ -312,3 +312,41 @@ test("app UI omits prototype-only explanatory copy and person ids", () => {
   assert.doesNotMatch(appSource, /先用純前端資料流驗證新增人物、配偶與子女，以及自動排版是否夠清楚可讀/);
   assert.doesNotMatch(appSource, /節點可點選，視窗可縮放平移。這一版先把「能看、能加、能重排」做出來。/);
 });
+
+test("app includes a mobile toolbar with only global actions", () => {
+  const appSource = readFileSync(
+    new URL("../src/App.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(appSource, /className="mobile-toolbar mobile-only"/);
+  assert.match(appSource, /新增獨立人物/);
+  assert.match(appSource, /匯入 JSON/);
+  assert.match(appSource, /匯出 JSON/);
+  assert.match(appSource, /還原範例資料/);
+});
+
+test("person detail section includes spouse and child actions", () => {
+  const appSource = readFileSync(
+    new URL("../src/App.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(appSource, /className="detail-actions"/);
+  assert.match(appSource, /新增配偶/);
+  assert.match(appSource, /新增子女/);
+});
+
+test("mobile toolbar does not contain spouse or child actions", () => {
+  const appSource = readFileSync(
+    new URL("../src/App.tsx", import.meta.url),
+    "utf8",
+  );
+  const mobileToolbarSection = appSource.match(
+    /<div className="mobile-toolbar mobile-only">[\s\S]*?<\/div>/,
+  );
+
+  assert.ok(mobileToolbarSection, "expected mobile toolbar markup to exist");
+  assert.doesNotMatch(mobileToolbarSection[0], /新增配偶/);
+  assert.doesNotMatch(mobileToolbarSection[0], /新增子女/);
+});

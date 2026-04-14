@@ -31,6 +31,11 @@ const edgeTypes: EdgeTypes = {
 };
 
 function App() {
+  const [isMobile, setIsMobile] = useState<boolean>(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia("(max-width: 960px)").matches
+      : false,
+  );
   const [people, setPeople] = useState<Person[]>(sampleTree.people);
   const [relationships, setRelationships] = useState<Relationship[]>(sampleTree.relationships);
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(sampleTree.people[4]?.id ?? null);
@@ -51,6 +56,24 @@ function App() {
       void reactFlow.fitView({ padding: 0.2, duration: 350 });
     });
   }, [people.length, relationships.length, reactFlow]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(max-width: 960px)");
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsMobile(event.matches);
+    };
+
+    setIsMobile(mediaQuery.matches);
+    mediaQuery.addEventListener("change", handleChange);
+
+    return () => {
+      mediaQuery.removeEventListener("change", handleChange);
+    };
+  }, []);
 
   function updateSelectedPerson<K extends keyof Person>(key: K, value: Person[K]) {
     if (!selectedPersonId) {
@@ -171,6 +194,25 @@ function App() {
     setImportMessage("已還原範例家譜。");
   }
 
+  function renderGlobalActionButtons(className: string) {
+    return (
+      <div className={className}>
+        <button onClick={addStandalonePerson} type="button">
+          新增獨立人物
+        </button>
+        <button onClick={() => fileInputRef.current?.click()} type="button">
+          匯入 JSON
+        </button>
+        <button onClick={exportJson} type="button">
+          匯出 JSON
+        </button>
+        <button className="button-secondary" onClick={resetSampleData} type="button">
+          還原範例資料
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -178,28 +220,9 @@ function App() {
           <h1>Zupu 族譜原型</h1>
         </div>
 
-        <section className="panel">
+        <section className="panel desktop-only">
           <h2>操作</h2>
-          <div className="action-grid">
-            <button onClick={addStandalonePerson} type="button">
-              新增獨立人物
-            </button>
-            <button disabled={!selectedPerson || Boolean(selectedSpouseId)} onClick={addSpouse} type="button">
-              為選中人物新增配偶
-            </button>
-            <button disabled={!selectedPerson} onClick={addChild} type="button">
-              為選中人物新增子女
-            </button>
-            <button onClick={exportJson} type="button">
-              匯出 JSON
-            </button>
-            <button onClick={() => fileInputRef.current?.click()} type="button">
-              匯入 JSON
-            </button>
-            <button className="button-secondary" onClick={resetSampleData} type="button">
-              還原範例資料
-            </button>
-          </div>
+          {renderGlobalActionButtons("action-grid")}
           <input
             accept="application/json"
             hidden
@@ -252,6 +275,19 @@ function App() {
                   ? "此人物已經有一位配偶；第一版原型不再新增第二位配偶。"
                   : "此人物目前沒有配偶。"}
               </p>
+              <div className="detail-actions">
+                <button
+                  className="button-secondary"
+                  disabled={Boolean(selectedSpouseId)}
+                  onClick={addSpouse}
+                  type="button"
+                >
+                  新增配偶
+                </button>
+                <button onClick={addChild} type="button">
+                  新增子女
+                </button>
+              </div>
               <button
                 className="button-danger"
                 onClick={deleteSelectedPerson}
@@ -271,6 +307,10 @@ function App() {
           <h2>手機優先的族譜可視化原型</h2>
         </div>
 
+        <div className="mobile-toolbar mobile-only">
+          {renderGlobalActionButtons("mobile-toolbar__grid")}
+        </div>
+
         <div className="flow-wrapper">
           <ReactFlow
             edgeTypes={edgeTypes}
@@ -285,7 +325,7 @@ function App() {
             proOptions={{ hideAttribution: true }}
           >
             <Background color="#d7d8d0" gap={20} />
-            <MiniMap pannable zoomable />
+            {!isMobile ? <MiniMap pannable zoomable /> : null}
             <Controls showInteractive={false} />
           </ReactFlow>
         </div>

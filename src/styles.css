@@ -205,22 +205,48 @@ button:disabled {
   color: #5d6d60;
 }
 
-.mobile-toolbar {
-  position: sticky;
-  top: 0.75rem;
-  z-index: 5;
-  padding: 0.85rem;
-  border: 1px solid rgba(55, 84, 68, 0.14);
-  border-radius: 22px;
-  background: rgba(252, 251, 247, 0.86);
-  box-shadow: 0 12px 28px rgba(31, 52, 41, 0.12);
-  backdrop-filter: blur(10px);
+.canvas-stage__status {
+  margin: -0.2rem 0 0;
+  color: #536155;
+  font-size: 0.92rem;
 }
 
-.mobile-toolbar__grid {
+.mobile-fab {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  justify-items: end;
   gap: 0.75rem;
+  z-index: 12;
+}
+
+.mobile-fab__panel {
+  width: min(80vw, 220px);
+  padding: 0.8rem;
+  border: 1px solid rgba(55, 84, 68, 0.14);
+  border-radius: 22px;
+  background: rgba(252, 251, 247, 0.96);
+  box-shadow: 0 12px 28px rgba(31, 52, 41, 0.16);
+  backdrop-filter: blur(10px);
+  display: grid;
+  gap: 0.75rem;
+}
+
+.mobile-fab__panel button {
+  width: 100%;
+  text-align: left;
+}
+
+.mobile-fab__trigger {
+  width: 3.5rem;
+  height: 3.5rem;
+  padding: 0;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 1.8rem;
+  line-height: 1;
 }
 
 .flow-wrapper {
@@ -399,6 +425,10 @@ button:disabled {
     display: block;
   }
 
+  .mobile-fab.mobile-only {
+    display: grid;
+  }
+
   .canvas-stage {
     order: 1;
     padding: 1rem;
@@ -409,7 +439,8 @@ button:disabled {
     display: block;
   }
 
-  .mobile-toolbar button,
+  .mobile-fab__panel button,
+  .mobile-fab__trigger,
   .detail-actions button {
     min-height: 3.1rem;
     padding: 0.95rem 1rem;

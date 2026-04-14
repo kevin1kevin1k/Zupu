@@ -38,6 +38,7 @@ function App() {
       ? window.matchMedia("(max-width: 960px)").matches
       : false,
   );
+  const [isMobileFabOpen, setIsMobileFabOpen] = useState(false);
   const [people, setPeople] = useState<Person[]>(sampleTree.people);
   const [relationships, setRelationships] = useState<Relationship[]>(sampleTree.relationships);
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(sampleTree.people[4]?.id ?? null);
@@ -76,6 +77,12 @@ function App() {
       mediaQuery.removeEventListener("change", handleChange);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isMobile && isMobileFabOpen) {
+      setIsMobileFabOpen(false);
+    }
+  }, [isMobile, isMobileFabOpen]);
 
   function updateSelectedPerson<K extends keyof Person>(key: K, value: Person[K]) {
     if (!selectedPersonId) {
@@ -307,9 +314,9 @@ function App() {
           <h2>手機優先的族譜可視化原型</h2>
         </div>
 
-        <div className="mobile-toolbar mobile-only">
-          {renderGlobalActionButtons("mobile-toolbar__grid")}
-        </div>
+        {isMobile && importMessage ? (
+          <p className="canvas-stage__status mobile-only">{importMessage}</p>
+        ) : null}
 
         <div className="flow-wrapper">
           <ReactFlow
@@ -320,9 +327,11 @@ function App() {
             nodeTypes={nodeTypes}
             nodes={nodes}
             onNodeClick={(_, node) => {
+              setIsMobileFabOpen(false);
               setSelectedPersonId(node.id);
             }}
             onPaneClick={() => {
+              setIsMobileFabOpen(false);
               setSelectedPersonId(null);
             }}
             proOptions={{ hideAttribution: true }}
@@ -331,6 +340,61 @@ function App() {
             {!isMobile ? <MiniMap pannable zoomable /> : null}
             <Controls showInteractive={false} />
           </ReactFlow>
+        </div>
+
+        <div className="mobile-fab mobile-only">
+          {isMobileFabOpen ? (
+            <div className="mobile-fab__panel">
+              <button
+                onClick={() => {
+                  addStandalonePerson();
+                  setIsMobileFabOpen(false);
+                }}
+                type="button"
+              >
+                新增獨立人物
+              </button>
+              <button
+                onClick={() => {
+                  fileInputRef.current?.click();
+                  setIsMobileFabOpen(false);
+                }}
+                type="button"
+              >
+                匯入 JSON
+              </button>
+              <button
+                onClick={() => {
+                  exportJson();
+                  setIsMobileFabOpen(false);
+                }}
+                type="button"
+              >
+                匯出 JSON
+              </button>
+              <button
+                className="button-secondary"
+                onClick={() => {
+                  resetSampleData();
+                  setIsMobileFabOpen(false);
+                }}
+                type="button"
+              >
+                還原範例資料
+              </button>
+            </div>
+          ) : null}
+          <button
+            aria-expanded={isMobileFabOpen}
+            aria-label={isMobileFabOpen ? "關閉更多操作" : "開啟更多操作"}
+            className="mobile-fab__trigger"
+            onClick={() => {
+              setIsMobileFabOpen((current) => !current);
+            }}
+            type="button"
+          >
+            {isMobileFabOpen ? "×" : "⋯"}
+          </button>
         </div>
       </main>
     </div>

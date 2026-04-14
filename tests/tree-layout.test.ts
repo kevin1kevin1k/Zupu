@@ -379,13 +379,16 @@ test("app UI omits prototype-only explanatory copy and person ids", () => {
   assert.doesNotMatch(appSource, /節點可點選，視窗可縮放平移。這一版先把「能看、能加、能重排」做出來。/);
 });
 
-test("app includes a mobile toolbar with only global actions", () => {
+test("app includes a mobile fab entry for low-frequency global actions", () => {
   const appSource = readFileSync(
     new URL("../src/App.tsx", import.meta.url),
     "utf8",
   );
 
-  assert.match(appSource, /className="mobile-toolbar mobile-only"/);
+  assert.doesNotMatch(appSource, /className="mobile-toolbar mobile-only"/);
+  assert.match(appSource, /className="mobile-fab mobile-only"/);
+  assert.match(appSource, /className="mobile-fab__trigger"/);
+  assert.match(appSource, /className="mobile-fab__panel"/);
   assert.match(appSource, /新增獨立人物/);
   assert.match(appSource, /匯入 JSON/);
   assert.match(appSource, /匯出 JSON/);
@@ -403,18 +406,18 @@ test("person detail section includes spouse and child actions", () => {
   assert.match(appSource, /新增子女/);
 });
 
-test("mobile toolbar does not contain spouse or child actions", () => {
+test("mobile fab panel does not contain spouse or child actions", () => {
   const appSource = readFileSync(
     new URL("../src/App.tsx", import.meta.url),
     "utf8",
   );
-  const mobileToolbarSection = appSource.match(
-    /<div className="mobile-toolbar mobile-only">[\s\S]*?<\/div>/,
+  const mobileFabSection = appSource.match(
+    /<div className="mobile-fab mobile-only">[\s\S]*?className="mobile-fab__panel"[\s\S]*?<\/div>[\s\S]*?<\/div>/,
   );
 
-  assert.ok(mobileToolbarSection, "expected mobile toolbar markup to exist");
-  assert.doesNotMatch(mobileToolbarSection[0], /新增配偶/);
-  assert.doesNotMatch(mobileToolbarSection[0], /新增子女/);
+  assert.ok(mobileFabSection, "expected mobile fab markup to exist");
+  assert.doesNotMatch(mobileFabSection[0], /新增配偶/);
+  assert.doesNotMatch(mobileFabSection[0], /新增子女/);
 });
 
 test("clicking the flow pane clears the selected person", () => {
@@ -423,7 +426,7 @@ test("clicking the flow pane clears the selected person", () => {
     "utf8",
   );
 
-  assert.match(appSource, /onPaneClick=\{\(\) => \{\s*setSelectedPersonId\(null\);?\s*\}\}/);
+  assert.match(appSource, /onPaneClick=\{\(\) => \{[\s\S]*setSelectedPersonId\(null\);?[\s\S]*\}\}/);
 });
 
 test("person detail panel is hidden instead of showing an empty-state hint", () => {

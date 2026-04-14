@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Background,
-  Controls,
   type EdgeTypes,
   MiniMap,
   ReactFlow,
@@ -77,12 +76,6 @@ function App() {
       mediaQuery.removeEventListener("change", handleChange);
     };
   }, []);
-
-  useEffect(() => {
-    if (!isMobile && isMobileFabOpen) {
-      setIsMobileFabOpen(false);
-    }
-  }, [isMobile, isMobileFabOpen]);
 
   function updateSelectedPerson<K extends keyof Person>(key: K, value: Person[K]) {
     if (!selectedPersonId) {
@@ -203,49 +196,12 @@ function App() {
     setImportMessage("已還原範例家譜。");
   }
 
-  function renderGlobalActionButtons(className: string) {
-    return (
-      <div className={className}>
-        <button onClick={addStandalonePerson} type="button">
-          新增獨立人物
-        </button>
-        <button onClick={() => fileInputRef.current?.click()} type="button">
-          匯入 JSON
-        </button>
-        <button onClick={exportJson} type="button">
-          匯出 JSON
-        </button>
-        <button className="button-secondary" onClick={resetSampleData} type="button">
-          還原範例資料
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="app-shell">
       <aside className="sidebar">
         <div className="sidebar__hero">
           <h1>Zupu 族譜原型</h1>
         </div>
-
-        <section className="panel desktop-only">
-          <h2>操作</h2>
-          {renderGlobalActionButtons("action-grid")}
-          <input
-            accept="application/json"
-            hidden
-            onChange={(event) => {
-              void importJson(event.target.files?.[0] ?? null);
-              event.target.value = "";
-            }}
-            ref={fileInputRef}
-            type="file"
-          />
-          <p className="panel__hint">
-            {importMessage || "提示：先點選人物，再從側欄建立配偶或子女。"}
-          </p>
-        </section>
 
         {selectedPerson ? (
           <section className="panel">
@@ -310,12 +266,23 @@ function App() {
       </aside>
 
       <main className="canvas-stage">
+        <input
+          accept="application/json"
+          hidden
+          onChange={(event) => {
+            void importJson(event.target.files?.[0] ?? null);
+            event.target.value = "";
+          }}
+          ref={fileInputRef}
+          type="file"
+        />
+
         <div className="canvas-stage__header">
           <h2>手機優先的族譜可視化原型</h2>
         </div>
 
-        {isMobile && importMessage ? (
-          <p className="canvas-stage__status mobile-only">{importMessage}</p>
+        {importMessage ? (
+          <p className="canvas-stage__status">{importMessage}</p>
         ) : null}
 
         <div className="flow-wrapper">
@@ -338,13 +305,12 @@ function App() {
           >
             <Background color="#d7d8d0" gap={20} />
             {!isMobile ? <MiniMap pannable zoomable /> : null}
-            <Controls showInteractive={false} />
           </ReactFlow>
         </div>
 
-        <div className="mobile-fab mobile-only">
+        <div className="global-fab">
           {isMobileFabOpen ? (
-            <div className="mobile-fab__panel">
+            <div className="global-fab__panel">
               <button
                 onClick={() => {
                   addStandalonePerson();
@@ -387,7 +353,7 @@ function App() {
           <button
             aria-expanded={isMobileFabOpen}
             aria-label={isMobileFabOpen ? "關閉更多操作" : "開啟更多操作"}
-            className="mobile-fab__trigger"
+            className="global-fab__trigger"
             onClick={() => {
               setIsMobileFabOpen((current) => !current);
             }}

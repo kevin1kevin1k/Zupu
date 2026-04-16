@@ -235,20 +235,16 @@ function App() {
                   value={selectedPerson.photoUrl ?? ""}
                 />
               </label>
-              <p className="panel__hint">
-                {selectedSpouseId
-                  ? "此人物已經有一位配偶；第一版原型不再新增第二位配偶。"
-                  : "此人物目前沒有配偶。"}
-              </p>
               <div className="detail-actions">
-                <button
-                  className="button-secondary"
-                  disabled={Boolean(selectedSpouseId)}
-                  onClick={addSpouse}
-                  type="button"
-                >
-                  新增配偶
-                </button>
+                {!selectedSpouseId ? (
+                  <button
+                    className="button-secondary"
+                    onClick={addSpouse}
+                    type="button"
+                  >
+                    新增配偶
+                  </button>
+                ) : null}
                 <button onClick={addChild} type="button">
                   新增子女
                 </button>

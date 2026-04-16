@@ -406,6 +406,9 @@ test("person detail section includes spouse and child actions", () => {
   assert.match(appSource, /className="detail-actions"/);
   assert.match(appSource, /新增配偶/);
   assert.match(appSource, /新增子女/);
+  assert.doesNotMatch(appSource, /disabled=\{Boolean\(selectedSpouseId\)\}/);
+  assert.doesNotMatch(appSource, /此人物已經有一位配偶；第一版原型不再新增第二位配偶。/);
+  assert.doesNotMatch(appSource, /此人物目前沒有配偶。/);
 });
 
 test("shared fab panel does not contain spouse or child actions", () => {

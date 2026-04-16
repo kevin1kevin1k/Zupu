@@ -129,12 +129,6 @@ button:disabled {
   margin: 0 0 0.75rem;
 }
 
-.panel__hint {
-  margin: 0.75rem 0 0;
-  color: #536155;
-  font-size: 0.92rem;
-}
-
 .detail-actions {
   display: grid;
   gap: 0.75rem;

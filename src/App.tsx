@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Background,
+  type Edge,
   type EdgeTypes,
   MiniMap,
   ReactFlow,
-  useReactFlow,
+  type ReactFlowInstance,
 } from "@xyflow/react";
 import { sampleTree } from "./data/sampleTree";
 import { FamilyEdge } from "./components/FamilyEdge";
-import { PersonNode } from "./components/PersonNode";
+import { PersonNode, type PersonFlowNode } from "./components/PersonNode";
 import { SpouseEdge } from "./components/SpouseEdge";
 import {
   buildFlowElements,
@@ -37,16 +38,30 @@ function App() {
       ? window.matchMedia("(max-width: 960px)").matches
       : false,
   );
-  const [isMobileFabOpen, setIsMobileFabOpen] = useState(false);
+  const [isGlobalFabOpen, setIsGlobalFabOpen] = useState(false);
+  const [isPersonFabOpen, setIsPersonFabOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [people, setPeople] = useState<Person[]>(sampleTree.people);
   const [relationships, setRelationships] = useState<Relationship[]>(sampleTree.relationships);
-  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(sampleTree.people[4]?.id ?? null);
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [importMessage, setImportMessage] = useState<string>("");
+  const [flowViewport, setFlowViewport] = useState({ width: 0, height: 0 });
+  const [editDraft, setEditDraft] = useState<{
+    name: string;
+    gender: Gender;
+    photoUrl: string;
+  }>({
+    name: "",
+    gender: "other",
+    photoUrl: "",
+  });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const reactFlow = useReactFlow();
+  const flowWrapperRef = useRef<HTMLDivElement | null>(null);
+  const reactFlowInstanceRef = useRef<ReactFlowInstance<PersonFlowNode, Edge> | null>(null);
 
   const selectedPerson = people.find((person) => person.id === selectedPersonId) ?? null;
   const selectedSpouseId = selectedPersonId ? getSpouseId(selectedPersonId, relationships) : null;
+  const isFlowViewportReady = flowViewport.width > 0 && flowViewport.height > 0;
   const { nodes, edges } = buildFlowElements(
     people,
     relationships,
@@ -54,10 +69,38 @@ function App() {
   );
 
   useEffect(() => {
+    if (!reactFlowInstanceRef.current || !isFlowViewportReady) {
+      return;
+    }
+
     requestAnimationFrame(() => {
-      void reactFlow.fitView({ padding: 0.2, duration: 350 });
+      void reactFlowInstanceRef.current?.fitView({ padding: 0.2, duration: 350 });
     });
-  }, [people.length, relationships.length, reactFlow]);
+  }, [isFlowViewportReady, people.length, relationships.length]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !flowWrapperRef.current) {
+      return;
+    }
+
+    const wrapper = flowWrapperRef.current;
+    const updateViewportReady = () => {
+      const { width, height } = wrapper.getBoundingClientRect();
+      setFlowViewport({ width, height });
+    };
+
+    updateViewportReady();
+
+    const observer = new ResizeObserver(() => {
+      updateViewportReady();
+    });
+
+    observer.observe(wrapper);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -77,23 +120,12 @@ function App() {
     };
   }, []);
 
-  function updateSelectedPerson<K extends keyof Person>(key: K, value: Person[K]) {
-    if (!selectedPersonId) {
-      return;
-    }
-
-    setPeople((current) =>
-      current.map((person) =>
-        person.id === selectedPersonId ? { ...person, [key]: value } : person,
-      ),
-    );
-  }
-
   function addStandalonePerson() {
     const newPerson = createBlankPerson(getNextPersonName("新人物", people), "other");
 
     setPeople((current) => [...current, newPerson]);
     setSelectedPersonId(newPerson.id);
+    setIsGlobalFabOpen(false);
   }
 
   function addSpouse() {
@@ -109,6 +141,8 @@ function App() {
       createRelationship("spouse", selectedPersonId, newPerson.id),
     ]);
     setSelectedPersonId(newPerson.id);
+    setIsPersonFabOpen(false);
+    setIsEditModalOpen(false);
   }
 
   function addChild() {
@@ -130,6 +164,8 @@ function App() {
     setPeople((current) => [...current, newPerson]);
     setRelationships((current) => [...current, ...nextRelationships]);
     setSelectedPersonId(newPerson.id);
+    setIsPersonFabOpen(false);
+    setIsEditModalOpen(false);
   }
 
   function deleteSelectedPerson() {
@@ -154,6 +190,8 @@ function App() {
     setPeople(nextDocument.people);
     setRelationships(nextDocument.relationships);
     setSelectedPersonId(nextDocument.people[0]?.id ?? null);
+    setIsPersonFabOpen(false);
+    setIsEditModalOpen(false);
     setImportMessage("已刪除人物並移除相關關係。");
   }
 
@@ -182,6 +220,9 @@ function App() {
       setPeople(parsed.people);
       setRelationships(parsed.relationships);
       setSelectedPersonId(parsed.people[0]?.id ?? null);
+      setIsGlobalFabOpen(false);
+      setIsPersonFabOpen(false);
+      setIsEditModalOpen(false);
       setImportMessage("已成功匯入族譜 JSON。");
     } catch (error) {
       const message = error instanceof Error ? error.message : "匯入失敗。";
@@ -193,74 +234,53 @@ function App() {
     setPeople(sampleTree.people);
     setRelationships(sampleTree.relationships);
     setSelectedPersonId(sampleTree.people[4]?.id ?? null);
+    setIsGlobalFabOpen(false);
+    setIsPersonFabOpen(false);
+    setIsEditModalOpen(false);
     setImportMessage("已還原範例家譜。");
+  }
+
+  function openEditModal() {
+    if (!selectedPerson) {
+      return;
+    }
+
+    setEditDraft({
+      name: selectedPerson.name,
+      gender: selectedPerson.gender,
+      photoUrl: selectedPerson.photoUrl ?? "",
+    });
+    setIsPersonFabOpen(false);
+    setIsEditModalOpen(true);
+  }
+
+  function closeEditModal() {
+    setIsEditModalOpen(false);
+  }
+
+  function saveEditedPerson() {
+    if (!selectedPersonId) {
+      return;
+    }
+
+    setPeople((current) =>
+      current.map((person) =>
+        person.id === selectedPersonId
+          ? {
+              ...person,
+              name: editDraft.name,
+              gender: editDraft.gender,
+              photoUrl: editDraft.photoUrl || undefined,
+            }
+          : person,
+      ),
+    );
+    setIsEditModalOpen(false);
+    setIsPersonFabOpen(true);
   }
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <div className="sidebar__hero">
-          <h1>Zupu 族譜原型</h1>
-        </div>
-
-        {selectedPerson ? (
-          <section className="panel">
-            <h2>人物資料</h2>
-            <div className="form-stack">
-              <label>
-                <span>姓名</span>
-                <input
-                  onChange={(event) => updateSelectedPerson("name", event.target.value)}
-                  type="text"
-                  value={selectedPerson.name}
-                />
-              </label>
-              <label>
-                <span>性別</span>
-                <select
-                  onChange={(event) => updateSelectedPerson("gender", event.target.value as Gender)}
-                  value={selectedPerson.gender}
-                >
-                  <option value="male">男性</option>
-                  <option value="female">女性</option>
-                  <option value="other">未設定</option>
-                </select>
-              </label>
-              <label>
-                <span>照片 URL（選填）</span>
-                <input
-                  onChange={(event) => updateSelectedPerson("photoUrl", event.target.value || undefined)}
-                  placeholder="https://example.com/photo.jpg"
-                  type="url"
-                  value={selectedPerson.photoUrl ?? ""}
-                />
-              </label>
-              <div className="detail-actions">
-                {!selectedSpouseId ? (
-                  <button
-                    className="button-secondary"
-                    onClick={addSpouse}
-                    type="button"
-                  >
-                    新增配偶
-                  </button>
-                ) : null}
-                <button onClick={addChild} type="button">
-                  新增子女
-                </button>
-              </div>
-              <button
-                className="button-danger"
-                onClick={deleteSelectedPerson}
-                type="button"
-              >
-                刪除人物
-              </button>
-            </div>
-          </section>
-        ) : null}
-      </aside>
-
       <main className="canvas-stage">
         <input
           accept="application/json"
@@ -274,91 +294,234 @@ function App() {
         />
 
         <div className="canvas-stage__header">
-          <h2>手機優先的族譜可視化原型</h2>
+          <h1>Zupu 族譜</h1>
         </div>
 
         {importMessage ? (
           <p className="canvas-stage__status">{importMessage}</p>
         ) : null}
 
-        <div className="flow-wrapper">
-          <ReactFlow
-            edgeTypes={edgeTypes}
-            edges={edges}
-            fitView
-            minZoom={0.2}
-            nodeTypes={nodeTypes}
-            nodes={nodes}
-            onNodeClick={(_, node) => {
-              setIsMobileFabOpen(false);
-              setSelectedPersonId(node.id);
-            }}
-            onPaneClick={() => {
-              setIsMobileFabOpen(false);
-              setSelectedPersonId(null);
-            }}
-            proOptions={{ hideAttribution: true }}
-          >
-            <Background color="#d7d8d0" gap={20} />
-            {!isMobile ? <MiniMap pannable zoomable /> : null}
-          </ReactFlow>
-        </div>
-
-        <div className="global-fab">
-          {isMobileFabOpen ? (
-            <div className="global-fab__panel">
-              <button
-                onClick={() => {
-                  addStandalonePerson();
-                  setIsMobileFabOpen(false);
+        <div className="flow-wrapper" ref={flowWrapperRef}>
+          {isFlowViewportReady ? (
+            <div
+              className="flow-viewport"
+              style={{ width: flowViewport.width, height: flowViewport.height }}
+            >
+              <ReactFlow
+                edgeTypes={edgeTypes}
+                edges={edges}
+                height={flowViewport.height}
+                minZoom={0.2}
+                nodeTypes={nodeTypes}
+                nodes={nodes}
+                onInit={(instance) => {
+                  reactFlowInstanceRef.current = instance;
                 }}
-                type="button"
-              >
-                新增獨立人物
-              </button>
-              <button
-                onClick={() => {
-                  fileInputRef.current?.click();
-                  setIsMobileFabOpen(false);
+                width={flowViewport.width}
+                onNodeClick={(_, node) => {
+                  setIsGlobalFabOpen(false);
+                  setIsEditModalOpen(false);
+                  setSelectedPersonId(node.id);
+                  setIsPersonFabOpen(true);
                 }}
-                type="button"
-              >
-                匯入 JSON
-              </button>
-              <button
-                onClick={() => {
-                  exportJson();
-                  setIsMobileFabOpen(false);
+                onPaneClick={() => {
+                  setIsGlobalFabOpen(false);
+                  setIsPersonFabOpen(false);
+                  setIsEditModalOpen(false);
+                  setSelectedPersonId(null);
                 }}
-                type="button"
+                proOptions={{ hideAttribution: true }}
               >
-                匯出 JSON
-              </button>
-              <button
-                className="button-secondary"
-                onClick={() => {
-                  resetSampleData();
-                  setIsMobileFabOpen(false);
-                }}
-                type="button"
-              >
-                還原範例資料
-              </button>
+                <Background color="#d7d8d0" gap={20} />
+                {!isMobile ? <MiniMap pannable zoomable /> : null}
+              </ReactFlow>
             </div>
           ) : null}
-          <button
-            aria-expanded={isMobileFabOpen}
-            aria-label={isMobileFabOpen ? "關閉更多操作" : "開啟更多操作"}
-            className="global-fab__trigger"
-            onClick={() => {
-              setIsMobileFabOpen((current) => !current);
-            }}
-            type="button"
-          >
-            {isMobileFabOpen ? "×" : "⋯"}
-          </button>
         </div>
+
+        {selectedPerson ? (
+          <div className="person-context-fab">
+            {isPersonFabOpen ? (
+              <div className="person-context-fab__panel">
+                <button
+                  onClick={openEditModal}
+                  type="button"
+                >
+                  編輯資料
+                </button>
+                {!selectedSpouseId ? (
+                  <button
+                    className="button-secondary"
+                    onClick={addSpouse}
+                    type="button"
+                  >
+                    新增配偶
+                  </button>
+                ) : null}
+                <button
+                  className="button-secondary"
+                  onClick={addChild}
+                  type="button"
+                >
+                  新增子女
+                </button>
+              </div>
+            ) : null}
+            <button
+              aria-expanded={isPersonFabOpen}
+              aria-label={isPersonFabOpen ? "關閉人物操作" : "開啟人物操作"}
+              className="person-context-fab__trigger"
+              onClick={() => {
+                setIsPersonFabOpen((current) => !current);
+              }}
+              type="button"
+            >
+              {isPersonFabOpen ? "×" : "編輯"}
+            </button>
+          </div>
+        ) : null}
+
+        {!selectedPerson ? (
+          <div className="global-fab">
+            {isGlobalFabOpen ? (
+              <div className="global-fab__panel">
+                <button
+                  onClick={() => {
+                    addStandalonePerson();
+                    setIsGlobalFabOpen(false);
+                  }}
+                  type="button"
+                >
+                  新增獨立人物
+                </button>
+                <button
+                  onClick={() => {
+                    fileInputRef.current?.click();
+                    setIsGlobalFabOpen(false);
+                  }}
+                  type="button"
+                >
+                  匯入 JSON
+                </button>
+                <button
+                  onClick={() => {
+                    exportJson();
+                    setIsGlobalFabOpen(false);
+                  }}
+                  type="button"
+                >
+                  匯出 JSON
+                </button>
+                <button
+                  className="button-secondary"
+                  onClick={() => {
+                    resetSampleData();
+                    setIsGlobalFabOpen(false);
+                  }}
+                  type="button"
+                >
+                  還原範例資料
+                </button>
+              </div>
+            ) : null}
+            <button
+              aria-expanded={isGlobalFabOpen}
+              aria-label={isGlobalFabOpen ? "關閉更多操作" : "開啟更多操作"}
+              className="global-fab__trigger"
+              onClick={() => {
+                setIsGlobalFabOpen((current) => !current);
+              }}
+              type="button"
+            >
+              {isGlobalFabOpen ? "×" : "⋯"}
+            </button>
+          </div>
+        ) : null}
       </main>
+
+      {isEditModalOpen && selectedPerson ? (
+        <div
+          className="edit-modal__backdrop"
+          onClick={closeEditModal}
+          role="presentation"
+        >
+          <div
+            className="edit-modal"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-modal-title"
+          >
+            <div className="edit-modal__header">
+              <h2 id="edit-modal-title">編輯資料</h2>
+            </div>
+            <div className="form-stack">
+              <label>
+                <span>姓名</span>
+                <input
+                  onChange={(event) =>
+                    setEditDraft((current) => ({ ...current, name: event.target.value }))
+                  }
+                  type="text"
+                  value={editDraft.name}
+                />
+              </label>
+              <label>
+                <span>性別</span>
+                <select
+                  onChange={(event) =>
+                    setEditDraft((current) => ({
+                      ...current,
+                      gender: event.target.value as Gender,
+                    }))
+                  }
+                  value={editDraft.gender}
+                >
+                  <option value="male">男性</option>
+                  <option value="female">女性</option>
+                  <option value="other">未設定</option>
+                </select>
+              </label>
+              <label>
+                <span>照片 URL（選填）</span>
+                <input
+                  onChange={(event) =>
+                    setEditDraft((current) => ({
+                      ...current,
+                      photoUrl: event.target.value,
+                    }))
+                  }
+                  placeholder="https://example.com/photo.jpg"
+                  type="url"
+                  value={editDraft.photoUrl}
+                />
+              </label>
+            </div>
+            <div className="edit-modal__footer">
+              <button
+                className="button-secondary"
+                onClick={closeEditModal}
+                type="button"
+              >
+                取消
+              </button>
+              <button
+                onClick={saveEditedPerson}
+                type="button"
+              >
+                儲存
+              </button>
+            </div>
+            <button
+              className="button-danger edit-modal__delete"
+              onClick={deleteSelectedPerson}
+              type="button"
+            >
+              刪除人物
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

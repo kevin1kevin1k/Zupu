@@ -329,6 +329,16 @@ test("selected nodes have a strong readable highlight style", () => {
   );
 });
 
+test("flow wrapper defines an explicit height for React Flow", () => {
+  const styles = readFileSync(
+    new URL("../src/styles.css", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(styles, /\.flow-wrapper\s*\{[\s\S]*\n\s*width:\s*100%;/);
+  assert.match(styles, /\.flow-wrapper\s*\{[\s\S]*\n\s*height:\s*70vh;/);
+});
+
 test("buildFlowElements marks only the selected person node as selected", () => {
   const { nodes } = buildFlowElements(
     sampleTree.people,
@@ -391,24 +401,26 @@ test("app uses a shared fab entry for low-frequency global actions", () => {
   assert.match(appSource, /className="global-fab"/);
   assert.match(appSource, /className="global-fab__trigger"/);
   assert.match(appSource, /className="global-fab__panel"/);
+  assert.match(appSource, /\{!selectedPerson \? \(/);
   assert.match(appSource, /新增獨立人物/);
   assert.match(appSource, /匯入 JSON/);
   assert.match(appSource, /匯出 JSON/);
   assert.match(appSource, /還原範例資料/);
 });
 
-test("person detail section includes spouse and child actions", () => {
+test("selected people get a node-adjacent action fab", () => {
   const appSource = readFileSync(
     new URL("../src/App.tsx", import.meta.url),
     "utf8",
   );
 
-  assert.match(appSource, /className="detail-actions"/);
+  assert.doesNotMatch(appSource, /NodeToolbar/);
+  assert.match(appSource, /className="person-context-fab"/);
+  assert.match(appSource, /className="person-context-fab__trigger"/);
+  assert.match(appSource, /className="person-context-fab__panel"/);
+  assert.match(appSource, /編輯資料/);
   assert.match(appSource, /新增配偶/);
   assert.match(appSource, /新增子女/);
-  assert.doesNotMatch(appSource, /disabled=\{Boolean\(selectedSpouseId\)\}/);
-  assert.doesNotMatch(appSource, /此人物已經有一位配偶；第一版原型不再新增第二位配偶。/);
-  assert.doesNotMatch(appSource, /此人物目前沒有配偶。/);
 });
 
 test("shared fab panel does not contain spouse or child actions", () => {
@@ -421,6 +433,7 @@ test("shared fab panel does not contain spouse or child actions", () => {
   );
 
   assert.ok(sharedFabSection, "expected shared fab markup to exist");
+  assert.doesNotMatch(sharedFabSection[0], /編輯資料/);
   assert.doesNotMatch(sharedFabSection[0], /新增配偶/);
   assert.doesNotMatch(sharedFabSection[0], /新增子女/);
 });
@@ -435,6 +448,54 @@ test("canvas status message is shared by desktop and mobile", () => {
   assert.doesNotMatch(appSource, /isMobile && importMessage/);
 });
 
+test("flow fitView runs from a single onInit-driven path instead of hook-based store access", () => {
+  const appSource = readFileSync(
+    new URL("../src/App.tsx", import.meta.url),
+    "utf8",
+  );
+  const mainSource = readFileSync(
+    new URL("../src/main.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.doesNotMatch(mainSource, /ReactFlowProvider/);
+  assert.doesNotMatch(appSource, /useNodesInitialized/);
+  assert.doesNotMatch(appSource, /useReactFlow/);
+  assert.match(appSource, /const reactFlowInstanceRef = useRef<ReactFlowInstance<[^>]+> \| null>\(null\);/);
+  assert.match(appSource, /onInit=\{\(instance\) => \{/);
+  assert.match(appSource, /reactFlowInstanceRef\.current = instance/);
+  assert.match(appSource, /if \(!reactFlowInstanceRef\.current \|\| !isFlowViewportReady\) \{\s*return;\s*\}/);
+});
+
+test("react flow mounting is gated on measured container size and avoids eager fitView prop", () => {
+  const appSource = readFileSync(
+    new URL("../src/App.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(appSource, /new ResizeObserver/);
+  assert.match(appSource, /const \[flowViewport, setFlowViewport\] = useState\(\{ width: 0, height: 0 \}\);/);
+  assert.match(appSource, /const isFlowViewportReady = flowViewport\.width > 0 && flowViewport\.height > 0;/);
+  assert.match(appSource, /const flowWrapperRef = useRef<HTMLDivElement \| null>\(null\);/);
+  assert.match(appSource, /if \(!reactFlowInstanceRef\.current \|\| !isFlowViewportReady\) \{\s*return;\s*\}/);
+  assert.match(appSource, /\{isFlowViewportReady \? \(/);
+  assert.match(appSource, /className="flow-viewport"/);
+  assert.match(appSource, /style=\{\{ width: flowViewport\.width, height: flowViewport\.height \}\}/);
+  assert.match(appSource, /width=\{flowViewport\.width\}/);
+  assert.match(appSource, /height=\{flowViewport\.height\}/);
+  assert.doesNotMatch(appSource, /\n\s*fitView\b/);
+});
+
+test("the app starts with no selected person before the user clicks a node", () => {
+  const appSource = readFileSync(
+    new URL("../src/App.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(appSource, /const \[selectedPersonId, setSelectedPersonId\] = useState<string \| null>\(null\);/);
+  assert.doesNotMatch(appSource, /\{nodesInitialized && selectedPerson \?/);
+});
+
 test("clicking the flow pane clears the selected person", () => {
   const appSource = readFileSync(
     new URL("../src/App.tsx", import.meta.url),
@@ -444,12 +505,19 @@ test("clicking the flow pane clears the selected person", () => {
   assert.match(appSource, /onPaneClick=\{\(\) => \{[\s\S]*setSelectedPersonId\(null\);?[\s\S]*\}\}/);
 });
 
-test("person detail panel is hidden instead of showing an empty-state hint", () => {
+test("editing happens inside a modal instead of a persistent sidebar form", () => {
   const appSource = readFileSync(
     new URL("../src/App.tsx", import.meta.url),
     "utf8",
   );
 
+  assert.doesNotMatch(appSource, /<aside className="sidebar">/);
   assert.doesNotMatch(appSource, /請先點選畫布上的人物節點。/);
-  assert.match(appSource, /\{selectedPerson \? \(\s*<section className="panel">/);
+  assert.match(appSource, /className="edit-modal__backdrop"/);
+  assert.match(appSource, /className="edit-modal"/);
+  assert.match(appSource, /姓名/);
+  assert.match(appSource, /性別/);
+  assert.match(appSource, /照片 URL（選填）/);
+  assert.match(appSource, /儲存/);
+  assert.match(appSource, /取消/);
 });

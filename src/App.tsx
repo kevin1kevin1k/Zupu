@@ -279,6 +279,50 @@ function App() {
     setIsPersonFabOpen(true);
   }
 
+  function renderGlobalActions(panelClassName: string) {
+    return (
+      <div className={panelClassName}>
+        <button
+          onClick={() => {
+            addStandalonePerson();
+            setIsGlobalFabOpen(false);
+          }}
+          type="button"
+        >
+          新增獨立人物
+        </button>
+        <button
+          onClick={() => {
+            fileInputRef.current?.click();
+            setIsGlobalFabOpen(false);
+          }}
+          type="button"
+        >
+          匯入 JSON
+        </button>
+        <button
+          onClick={() => {
+            exportJson();
+            setIsGlobalFabOpen(false);
+          }}
+          type="button"
+        >
+          匯出 JSON
+        </button>
+        <button
+          className="button-secondary"
+          onClick={() => {
+            resetSampleData();
+            setIsGlobalFabOpen(false);
+          }}
+          type="button"
+        >
+          還原範例資料
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="app-shell">
       <main className="canvas-stage">
@@ -295,6 +339,24 @@ function App() {
 
         <div className="canvas-stage__header">
           <h1>Zupu 族譜</h1>
+          {!isMobile ? (
+            <div className="canvas-stage__actions">
+              <div className="desktop-actions">
+                {isGlobalFabOpen ? renderGlobalActions("desktop-actions__panel") : null}
+                <button
+                  aria-expanded={isGlobalFabOpen}
+                  aria-label={isGlobalFabOpen ? "關閉更多操作" : "開啟更多操作"}
+                  className="desktop-actions__trigger"
+                  onClick={() => {
+                    setIsGlobalFabOpen((current) => !current);
+                  }}
+                  type="button"
+                >
+                  {isGlobalFabOpen ? "×" : "更多"}
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {importMessage ? (
@@ -333,7 +395,7 @@ function App() {
                 proOptions={{ hideAttribution: true }}
               >
                 <Background color="#d7d8d0" gap={20} />
-                {!isMobile ? <MiniMap pannable zoomable /> : null}
+                {!isMobile ? <MiniMap className="family-minimap" pannable zoomable /> : null}
               </ReactFlow>
             </div>
           ) : null}
@@ -381,49 +443,9 @@ function App() {
           </div>
         ) : null}
 
-        {!selectedPerson ? (
+        {isMobile && !selectedPerson ? (
           <div className="global-fab">
-            {isGlobalFabOpen ? (
-              <div className="global-fab__panel">
-                <button
-                  onClick={() => {
-                    addStandalonePerson();
-                    setIsGlobalFabOpen(false);
-                  }}
-                  type="button"
-                >
-                  新增獨立人物
-                </button>
-                <button
-                  onClick={() => {
-                    fileInputRef.current?.click();
-                    setIsGlobalFabOpen(false);
-                  }}
-                  type="button"
-                >
-                  匯入 JSON
-                </button>
-                <button
-                  onClick={() => {
-                    exportJson();
-                    setIsGlobalFabOpen(false);
-                  }}
-                  type="button"
-                >
-                  匯出 JSON
-                </button>
-                <button
-                  className="button-secondary"
-                  onClick={() => {
-                    resetSampleData();
-                    setIsGlobalFabOpen(false);
-                  }}
-                  type="button"
-                >
-                  還原範例資料
-                </button>
-              </div>
-            ) : null}
+            {isGlobalFabOpen ? renderGlobalActions("global-fab__panel") : null}
             <button
               aria-expanded={isGlobalFabOpen}
               aria-label={isGlobalFabOpen ? "關閉更多操作" : "開啟更多操作"}

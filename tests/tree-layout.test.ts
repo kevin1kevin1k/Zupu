@@ -389,7 +389,7 @@ test("app UI omits prototype-only explanatory copy and person ids", () => {
   assert.doesNotMatch(appSource, /節點可點選，視窗可縮放平移。這一版先把「能看、能加、能重排」做出來。/);
 });
 
-test("app uses a shared fab entry for low-frequency global actions", () => {
+test("desktop uses a header action menu while mobile keeps the global fab", () => {
   const appSource = readFileSync(
     new URL("../src/App.tsx", import.meta.url),
     "utf8",
@@ -398,10 +398,15 @@ test("app uses a shared fab entry for low-frequency global actions", () => {
   assert.doesNotMatch(appSource, /className="mobile-toolbar mobile-only"/);
   assert.doesNotMatch(appSource, /<h2>操作<\/h2>/);
   assert.doesNotMatch(appSource, /<Controls\b/);
+  assert.match(appSource, /className="canvas-stage__actions"/);
+  assert.match(appSource, /className="desktop-actions"/);
+  assert.match(appSource, /className="desktop-actions__trigger"/);
+  assert.match(appSource, /renderGlobalActions\("desktop-actions__panel"\)/);
   assert.match(appSource, /className="global-fab"/);
   assert.match(appSource, /className="global-fab__trigger"/);
-  assert.match(appSource, /className="global-fab__panel"/);
-  assert.match(appSource, /\{!selectedPerson \? \(/);
+  assert.match(appSource, /renderGlobalActions\("global-fab__panel"\)/);
+  assert.match(appSource, /!isMobile \? \(/);
+  assert.match(appSource, /isMobile && !selectedPerson \? \(/);
   assert.match(appSource, /新增獨立人物/);
   assert.match(appSource, /匯入 JSON/);
   assert.match(appSource, /匯出 JSON/);
@@ -428,14 +433,30 @@ test("shared fab panel does not contain spouse or child actions", () => {
     new URL("../src/App.tsx", import.meta.url),
     "utf8",
   );
-  const sharedFabSection = appSource.match(
-    /<div className="global-fab[\s\S]*?className="global-fab__panel"[\s\S]*?<\/div>[\s\S]*?<\/div>/,
+  const renderGlobalActionsMatch = appSource.match(
+    /function renderGlobalActions\(panelClassName: string\) \{[\s\S]*?return \([\s\S]*?<div className=\{panelClassName\}>[\s\S]*?<\/div>[\s\S]*?\);\s*\}/,
   );
 
-  assert.ok(sharedFabSection, "expected shared fab markup to exist");
-  assert.doesNotMatch(sharedFabSection[0], /編輯資料/);
-  assert.doesNotMatch(sharedFabSection[0], /新增配偶/);
-  assert.doesNotMatch(sharedFabSection[0], /新增子女/);
+  assert.ok(renderGlobalActionsMatch, "expected shared global action renderer to exist");
+  assert.doesNotMatch(renderGlobalActionsMatch[0], /編輯資料/);
+  assert.doesNotMatch(renderGlobalActionsMatch[0], /新增配偶/);
+  assert.doesNotMatch(renderGlobalActionsMatch[0], /新增子女/);
+});
+
+test("desktop canvas keeps the minimap visible in the lower-right corner", () => {
+  const appSource = readFileSync(
+    new URL("../src/App.tsx", import.meta.url),
+    "utf8",
+  );
+  const styles = readFileSync(
+    new URL("../src/styles.css", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(appSource, /!isMobile \? <MiniMap className="family-minimap" pannable zoomable \/> : null/);
+  assert.match(styles, /\.react-flow__minimap\.family-minimap\s*\{/);
+  assert.match(styles, /right:\s*1rem;/);
+  assert.match(styles, /bottom:\s*1rem;/);
 });
 
 test("canvas status message is shared by desktop and mobile", () => {

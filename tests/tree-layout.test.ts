@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { sampleTree } from "../src/data/sampleTree.ts";
 import { buildFlowElements, deletePersonFromTree } from "../src/lib/tree.ts";
+import { buildSearchResults } from "../src/lib/search.ts";
 import type { FamilyTreeDocument } from "../src/types/family";
 
 const NODE_WIDTH = 190;
@@ -315,6 +316,47 @@ test("deleting a person removes direct relationships but keeps the remaining rel
   );
 });
 
+test("search returns all people in original order when query is empty", () => {
+  const results = buildSearchResults(
+    sampleTree.people,
+    sampleTree.relationships,
+    "   ",
+  );
+
+  assert.deepEqual(
+    results.map((result) => result.personId),
+    sampleTree.people.map((person) => person.id),
+  );
+});
+
+test("search prioritizes exact match before prefix and contains matches", () => {
+  const people = [
+    { id: "p-1", name: "王小華", gender: "female" as const },
+    { id: "p-2", name: "小華", gender: "male" as const },
+    { id: "p-3", name: "阿小華", gender: "other" as const },
+  ];
+
+  const results = buildSearchResults(people, [], "小華");
+
+  assert.deepEqual(
+    results.map((result) => result.personId),
+    ["p-2", "p-1", "p-3"],
+  );
+});
+
+test("search summaries include spouse names and child counts with a fallback", () => {
+  const results = buildSearchResults(
+    sampleTree.people,
+    sampleTree.relationships,
+    "",
+  );
+  const fatherResult = results.find((result) => result.personId === "p-father");
+  const userResult = results.find((result) => result.personId === "p-user");
+
+  assert.equal(fatherResult?.summary, "配偶：陳雅惠・子女：2");
+  assert.equal(userResult?.summary, "尚無關係資料");
+});
+
 test("selected nodes have a strong readable highlight style", () => {
   const styles = readFileSync(
     new URL("../src/styles.css", import.meta.url),
@@ -411,6 +453,56 @@ test("desktop uses a header action menu while mobile keeps the global fab", () =
   assert.match(appSource, /匯入 JSON/);
   assert.match(appSource, /匯出 JSON/);
   assert.match(appSource, /還原範例資料/);
+});
+
+test("header exposes a dedicated search entry and modal for name lookup", () => {
+  const appSource = readFileSync(
+    new URL("../src/App.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(appSource, /className="canvas-stage__search-trigger"/);
+  assert.match(appSource, /搜尋/);
+  assert.match(appSource, /className="search-modal__backdrop"/);
+  assert.match(appSource, /className="search-modal"/);
+  assert.match(appSource, /className="search-modal__results"/);
+  assert.match(appSource, /找不到符合姓名的人物/);
+});
+
+test("search selection recenters the canvas without opening the person action fab", () => {
+  const appSource = readFileSync(
+    new URL("../src/App.tsx", import.meta.url),
+    "utf8",
+  );
+  const selectSearchResultSection = appSource.match(
+    /function selectSearchResult\(personId: string\) \{[\s\S]*?\n  \}/,
+  );
+
+  assert.match(appSource, /function selectSearchResult\(personId: string\)/);
+  assert.ok(selectSearchResultSection, "expected selectSearchResult implementation");
+  assert.match(appSource, /setSelectedPersonId\(personId\);/);
+  assert.match(appSource, /setIsPersonFabOpen\(false\);/);
+  assert.match(appSource, /fitView\(\{\s*nodes:\s*\[targetNode\]/);
+  assert.doesNotMatch(selectSearchResultSection[0], /setIsPersonFabOpen\(true\);/);
+});
+
+test("search input ignores Enter while IME composition is still active", () => {
+  const appSource = readFileSync(
+    new URL("../src/App.tsx", import.meta.url),
+    "utf8",
+  );
+  const handleSearchInputKeyDownSection = appSource.match(
+    /function handleSearchInputKeyDown\(event: KeyboardEvent<HTMLInputElement>\) \{[\s\S]*?\n  \}/,
+  );
+
+  assert.match(appSource, /const \[isSearchComposing, setIsSearchComposing\] = useState\(false\);/);
+  assert.ok(handleSearchInputKeyDownSection, "expected handleSearchInputKeyDown implementation");
+  assert.match(handleSearchInputKeyDownSection[0], /isSearchComposing/);
+  assert.match(handleSearchInputKeyDownSection[0], /event\.nativeEvent\.isComposing/);
+  assert.match(handleSearchInputKeyDownSection[0], /event\.nativeEvent as KeyboardEvent/);
+  assert.match(handleSearchInputKeyDownSection[0], /keyCode === 229/);
+  assert.match(appSource, /onCompositionStart=\{\(\) => \{\s*setIsSearchComposing\(true\);\s*\}\}/);
+  assert.match(appSource, /onCompositionEnd=\{\(\) => \{\s*setIsSearchComposing\(false\);\s*\}\}/);
 });
 
 test("selected people get a node-adjacent action fab", () => {

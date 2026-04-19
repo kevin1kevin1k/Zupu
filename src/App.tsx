@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import {
   Background,
   type Edge,
@@ -21,6 +21,7 @@ import {
   getSpouseId,
   parseImportedDocument,
 } from "./lib/tree";
+import { buildSearchResults } from "./lib/search";
 import type { Gender, Person, Relationship } from "./types/family";
 
 const nodeTypes = {
@@ -41,6 +42,9 @@ function App() {
   const [isGlobalFabOpen, setIsGlobalFabOpen] = useState(false);
   const [isPersonFabOpen, setIsPersonFabOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchComposing, setIsSearchComposing] = useState(false);
   const [people, setPeople] = useState<Person[]>(sampleTree.people);
   const [relationships, setRelationships] = useState<Relationship[]>(sampleTree.relationships);
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
@@ -62,6 +66,7 @@ function App() {
   const selectedPerson = people.find((person) => person.id === selectedPersonId) ?? null;
   const selectedSpouseId = selectedPersonId ? getSpouseId(selectedPersonId, relationships) : null;
   const isFlowViewportReady = flowViewport.width > 0 && flowViewport.height > 0;
+  const searchResults = buildSearchResults(people, relationships, searchQuery);
   const { nodes, edges } = buildFlowElements(
     people,
     relationships,
@@ -208,6 +213,12 @@ function App() {
     setImportMessage("已匯出目前族譜 JSON。");
   }
 
+  function closeSearchModal() {
+    setIsSearchOpen(false);
+    setSearchQuery("");
+    setIsSearchComposing(false);
+  }
+
   async function importJson(file: File | null) {
     if (!file) {
       return;
@@ -223,6 +234,7 @@ function App() {
       setIsGlobalFabOpen(false);
       setIsPersonFabOpen(false);
       setIsEditModalOpen(false);
+      closeSearchModal();
       setImportMessage("已成功匯入族譜 JSON。");
     } catch (error) {
       const message = error instanceof Error ? error.message : "匯入失敗。";
@@ -237,6 +249,7 @@ function App() {
     setIsGlobalFabOpen(false);
     setIsPersonFabOpen(false);
     setIsEditModalOpen(false);
+    closeSearchModal();
     setImportMessage("已還原範例家譜。");
   }
 
@@ -323,6 +336,49 @@ function App() {
     );
   }
 
+  function selectSearchResult(personId: string) {
+    setIsGlobalFabOpen(false);
+    setIsPersonFabOpen(false);
+    setIsEditModalOpen(false);
+    setSelectedPersonId(personId);
+    closeSearchModal();
+
+    const targetNode = nodes.find((node) => node.id === personId);
+
+    if (!targetNode || !reactFlowInstanceRef.current) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      void reactFlowInstanceRef.current?.fitView({
+        nodes: [targetNode],
+        padding: 1.2,
+        duration: 350,
+        maxZoom: 1.2,
+      });
+    });
+  }
+
+  function handleSearchInputKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    const nativeEvent = event.nativeEvent as unknown as globalThis.KeyboardEvent;
+    // event.nativeEvent as KeyboardEvent
+
+    if (event.key !== "Enter") {
+      return;
+    }
+
+    if (isSearchComposing || event.nativeEvent.isComposing || nativeEvent.keyCode === 229) {
+      return;
+    }
+
+    if (searchResults.length === 0) {
+      return;
+    }
+
+    event.preventDefault();
+    selectSearchResult(searchResults[0]!.personId);
+  }
+
   return (
     <div className="app-shell">
       <main className="canvas-stage">
@@ -339,24 +395,44 @@ function App() {
 
         <div className="canvas-stage__header">
           <h1>Zupu 族譜</h1>
-          {!isMobile ? (
-            <div className="canvas-stage__actions">
-              <div className="desktop-actions">
-                {isGlobalFabOpen ? renderGlobalActions("desktop-actions__panel") : null}
-                <button
-                  aria-expanded={isGlobalFabOpen}
-                  aria-label={isGlobalFabOpen ? "關閉更多操作" : "開啟更多操作"}
-                  className="desktop-actions__trigger"
-                  onClick={() => {
-                    setIsGlobalFabOpen((current) => !current);
-                  }}
-                  type="button"
-                >
-                  {isGlobalFabOpen ? "×" : "更多"}
-                </button>
+          <div className="canvas-stage__header-tools">
+            <button
+              aria-expanded={isSearchOpen}
+              aria-label={isSearchOpen ? "關閉搜尋" : "開啟搜尋"}
+              className="canvas-stage__search-trigger"
+              onClick={() => {
+                setIsGlobalFabOpen(false);
+                setIsPersonFabOpen(false);
+                setIsEditModalOpen(false);
+                setIsSearchOpen((current) => !current);
+                if (isSearchOpen) {
+                  setSearchQuery("");
+                }
+              }}
+              type="button"
+            >
+              搜尋
+            </button>
+            {!isMobile ? (
+              <div className="canvas-stage__actions">
+                <div className="desktop-actions">
+                  {isGlobalFabOpen ? renderGlobalActions("desktop-actions__panel") : null}
+                  <button
+                    aria-expanded={isGlobalFabOpen}
+                    aria-label={isGlobalFabOpen ? "關閉更多操作" : "開啟更多操作"}
+                    className="desktop-actions__trigger"
+                    onClick={() => {
+                      setIsSearchOpen(false);
+                      setIsGlobalFabOpen((current) => !current);
+                    }}
+                    type="button"
+                  >
+                    {isGlobalFabOpen ? "×" : "更多"}
+                  </button>
+                </div>
               </div>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
 
         {importMessage ? (
@@ -383,6 +459,7 @@ function App() {
                 onNodeClick={(_, node) => {
                   setIsGlobalFabOpen(false);
                   setIsEditModalOpen(false);
+                  closeSearchModal();
                   setSelectedPersonId(node.id);
                   setIsPersonFabOpen(true);
                 }}
@@ -390,6 +467,7 @@ function App() {
                   setIsGlobalFabOpen(false);
                   setIsPersonFabOpen(false);
                   setIsEditModalOpen(false);
+                  closeSearchModal();
                   setSelectedPersonId(null);
                 }}
                 proOptions={{ hideAttribution: true }}
@@ -451,6 +529,7 @@ function App() {
               aria-label={isGlobalFabOpen ? "關閉更多操作" : "開啟更多操作"}
               className="global-fab__trigger"
               onClick={() => {
+                setIsSearchOpen(false);
                 setIsGlobalFabOpen((current) => !current);
               }}
               type="button"
@@ -460,6 +539,64 @@ function App() {
           </div>
         ) : null}
       </main>
+
+      {isSearchOpen ? (
+        <div
+          className="search-modal__backdrop"
+          onClick={closeSearchModal}
+          role="presentation"
+        >
+          <div
+            className="search-modal"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="search-modal-title"
+          >
+            <div className="search-modal__header">
+              <h2 id="search-modal-title">搜尋人物</h2>
+            </div>
+            <label className="search-modal__field">
+              <span>姓名</span>
+              <input
+                autoFocus
+                onChange={(event) => {
+                  setSearchQuery(event.target.value);
+                }}
+                onCompositionEnd={() => {
+                  setIsSearchComposing(false);
+                }}
+                onCompositionStart={() => {
+                  setIsSearchComposing(true);
+                }}
+                onKeyDown={handleSearchInputKeyDown}
+                placeholder="輸入姓名"
+                type="search"
+                value={searchQuery}
+              />
+            </label>
+            <div className="search-modal__results">
+              {searchResults.length > 0 ? (
+                searchResults.map((result) => (
+                  <button
+                    className="search-modal__result"
+                    key={result.personId}
+                    onClick={() => {
+                      selectSearchResult(result.personId);
+                    }}
+                    type="button"
+                  >
+                    <strong>{result.name}</strong>
+                    <span>{result.summary}</span>
+                  </button>
+                ))
+              ) : (
+                <p className="search-modal__empty">找不到符合姓名的人物</p>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {isEditModalOpen && selectedPerson ? (
         <div

@@ -162,6 +162,24 @@ button:disabled {
   align-items: end;
 }
 
+.canvas-stage__header-tools {
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: 0.75rem;
+}
+
+.canvas-stage__search-trigger {
+  min-width: 4.75rem;
+  height: 3rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 0.96rem;
+  line-height: 1;
+}
+
 .canvas-stage__actions {
   display: flex;
   justify-content: end;
@@ -300,6 +318,81 @@ button:disabled {
   padding: 1rem;
   background: rgba(20, 26, 22, 0.36);
   backdrop-filter: blur(6px);
+}
+
+.search-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+  display: grid;
+  place-items: start center;
+  padding: 4.5rem 1rem 1rem;
+  background: rgba(20, 26, 22, 0.24);
+  backdrop-filter: blur(6px);
+}
+
+.search-modal {
+  width: min(100%, 520px);
+  padding: 1rem;
+  border: 1px solid rgba(49, 83, 64, 0.14);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 24px 60px rgba(26, 44, 34, 0.22);
+  display: grid;
+  gap: 0.9rem;
+}
+
+.search-modal__header h2 {
+  margin: 0;
+}
+
+.search-modal__field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.search-modal__field span {
+  font-size: 0.88rem;
+  color: #516251;
+}
+
+.search-modal__field input {
+  width: 100%;
+  border: 1px solid rgba(56, 82, 63, 0.16);
+  border-radius: 14px;
+  padding: 0.8rem 0.95rem;
+  background: rgba(250, 250, 245, 0.9);
+}
+
+.search-modal__results {
+  display: grid;
+  gap: 0.65rem;
+  max-height: min(52vh, 360px);
+  overflow: auto;
+}
+
+.search-modal__result {
+  width: 100%;
+  text-align: left;
+  border-radius: 18px;
+  padding: 0.9rem 1rem;
+  display: grid;
+  gap: 0.28rem;
+}
+
+.search-modal__result strong {
+  font-size: 0.98rem;
+}
+
+.search-modal__result span,
+.search-modal__empty {
+  color: #57675b;
+  font-size: 0.9rem;
+}
+
+.search-modal__empty {
+  margin: 0;
+  padding: 0.4rem 0.1rem;
 }
 
 .edit-modal {
@@ -532,7 +625,11 @@ button:disabled {
   }
 
   .canvas-stage__header {
-    display: block;
+    align-items: center;
+  }
+
+  .canvas-stage__header-tools {
+    justify-content: space-between;
   }
 
   .canvas-stage__actions {
@@ -557,6 +654,15 @@ button:disabled {
   }
 
   .edit-modal {
+    width: min(100%, 100%);
+    padding: 0.95rem;
+  }
+
+  .search-modal__backdrop {
+    padding-top: 4.75rem;
+  }
+
+  .search-modal {
     width: min(100%, 100%);
     padding: 0.95rem;
   }

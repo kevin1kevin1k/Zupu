@@ -147,6 +147,8 @@ export function buildFlowElements(
         x: centeredX - NODE_WIDTH / 2,
         y: centeredY - NODE_HEIGHT / 2,
       },
+      width: NODE_WIDTH,
+      height: NODE_HEIGHT,
       data: {
         name: person.name,
         gender: person.gender,

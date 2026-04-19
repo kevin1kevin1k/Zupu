@@ -33,6 +33,17 @@ const edgeTypes: EdgeTypes = {
   spouse: SpouseEdge,
 };
 
+function getMiniMapNodeColor(node: PersonFlowNode) {
+  switch (node.data.gender) {
+    case "male":
+      return "rgba(123, 176, 214, 0.92)";
+    case "female":
+      return "rgba(221, 152, 186, 0.92)";
+    default:
+      return "rgba(151, 158, 151, 0.92)";
+  }
+}
+
 function App() {
   const [isMobile, setIsMobile] = useState<boolean>(() =>
     typeof window !== "undefined"
@@ -473,7 +484,23 @@ function App() {
                 proOptions={{ hideAttribution: true }}
               >
                 <Background color="#d7d8d0" gap={20} />
-                {!isMobile ? <MiniMap className="family-minimap" pannable zoomable /> : null}
+                {!isMobile ? (
+                  <MiniMap<PersonFlowNode>
+                    ariaLabel="族譜導覽圖"
+                    bgColor="rgba(246, 246, 240, 0.98)"
+                    className="family-minimap"
+                    maskColor="rgba(235, 241, 234, 0.78)"
+                    maskStrokeColor="rgba(57, 89, 69, 0.82)"
+                    maskStrokeWidth={2}
+                    nodeBorderRadius={6}
+                    nodeColor={getMiniMapNodeColor}
+                    nodeStrokeColor="rgba(37, 64, 49, 0.56)"
+                    nodeStrokeWidth={2}
+                    offsetScale={3}
+                    pannable
+                    zoomable
+                  />
+                ) : null}
               </ReactFlow>
             </div>
           ) : null}

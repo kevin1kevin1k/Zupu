@@ -396,6 +396,16 @@ test("buildFlowElements marks only the selected person node as selected", () => 
   assert.notEqual(unselectedNode.selected, true);
 });
 
+test("buildFlowElements assigns explicit node dimensions so the minimap can render them", () => {
+  const { nodes } = buildFlowElements(
+    sampleTree.people,
+    sampleTree.relationships,
+  );
+
+  assert.ok(nodes.every((node) => node.width === 190));
+  assert.ok(nodes.every((node) => node.height === 92));
+});
+
 test("person nodes use gender color classes instead of rendering gender text", () => {
   const componentSource = readFileSync(
     new URL("../src/components/PersonNode.tsx", import.meta.url),
@@ -545,10 +555,21 @@ test("desktop canvas keeps the minimap visible in the lower-right corner", () =>
     "utf8",
   );
 
-  assert.match(appSource, /!isMobile \? <MiniMap className="family-minimap" pannable zoomable \/> : null/);
+  assert.match(appSource, /<MiniMap<PersonFlowNode>/);
+  assert.match(appSource, /className="family-minimap"/);
+  assert.match(appSource, /nodeColor=\{getMiniMapNodeColor\}/);
+  assert.match(appSource, /nodeStrokeColor="rgba\(37, 64, 49, 0\.56\)"/);
+  assert.match(appSource, /maskColor="rgba\(235, 241, 234, 0\.78\)"/);
+  assert.match(appSource, /maskStrokeColor="rgba\(57, 89, 69, 0\.82\)"/);
+  assert.match(appSource, /maskStrokeWidth=\{2\}/);
+  assert.match(appSource, /pannable/);
+  assert.match(appSource, /zoomable/);
   assert.match(styles, /\.react-flow__minimap\.family-minimap\s*\{/);
   assert.match(styles, /right:\s*1rem;/);
   assert.match(styles, /bottom:\s*1rem;/);
+  assert.match(styles, /width:\s*220px;/);
+  assert.match(styles, /height:\s*148px;/);
+  assert.doesNotMatch(styles, /\.react-flow__minimap\.family-minimap \.react-flow__minimap-node\.person-node--male/);
 });
 
 test("canvas status message is shared by desktop and mobile", () => {

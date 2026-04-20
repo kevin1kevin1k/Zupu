@@ -200,12 +200,14 @@ button:disabled {
 
 .desktop-actions {
   position: relative;
-  display: grid;
-  justify-items: end;
-  gap: 0.75rem;
+  display: block;
 }
 
 .desktop-actions__panel {
+  position: absolute;
+  top: calc(100% + 0.75rem);
+  right: 0;
+  z-index: 2;
   width: 224px;
   padding: 0.85rem;
   border: 1px solid rgba(55, 84, 68, 0.14);
@@ -223,6 +225,8 @@ button:disabled {
 }
 
 .desktop-actions__trigger {
+  position: relative;
+  z-index: 1;
   min-width: 5rem;
   height: 3rem;
   padding: 0 1.1rem;

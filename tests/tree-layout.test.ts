@@ -465,6 +465,22 @@ test("desktop uses a header action menu while mobile keeps the global fab", () =
   assert.match(appSource, /還原範例資料/);
 });
 
+test("desktop action menu opens as a downward floating layer without shifting the trigger", () => {
+  const styles = readFileSync(
+    new URL("../src/styles.css", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(styles, /\.desktop-actions__panel\s*\{[\s\S]*\n\s*position:\s*absolute;/);
+  assert.match(
+    styles,
+    /\.desktop-actions__panel\s*\{[\s\S]*\n\s*top:\s*calc\(100%\s*\+\s*0\.75rem\);/,
+  );
+  assert.match(styles, /\.desktop-actions__panel\s*\{[\s\S]*\n\s*right:\s*0;/);
+  assert.match(styles, /\.desktop-actions__trigger\s*\{[\s\S]*\n\s*position:\s*relative;/);
+  assert.match(styles, /\.desktop-actions__trigger\s*\{[\s\S]*\n\s*z-index:\s*1;/);
+});
+
 test("header exposes a dedicated search entry and modal for name lookup", () => {
   const appSource = readFileSync(
     new URL("../src/App.tsx", import.meta.url),

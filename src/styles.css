@@ -443,7 +443,15 @@ button:disabled {
   height: 100%;
 }
 
+.person-node-shell {
+  position: relative;
+  width: 190px;
+  padding-top: 1.1rem;
+  overflow: visible;
+}
+
 .person-node {
+  position: relative;
   display: grid;
   grid-template-columns: 56px minmax(0, 1fr);
   gap: 0.8rem;
@@ -457,6 +465,23 @@ button:disabled {
   transition:
     box-shadow 160ms ease,
     border-color 160ms ease;
+}
+
+.person-node__kinship {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translate(-50%, 0);
+  z-index: 2;
+  max-width: calc(100% - 1rem);
+  padding: 0.28rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(57, 89, 69, 0.96);
+  color: #f8faf5;
+  font-size: 0.76rem;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 8px 18px rgba(35, 58, 45, 0.18);
 }
 
 .person-node--male {
@@ -489,6 +514,7 @@ button:disabled {
 }
 
 .person-node__avatar {
+  position: relative;
   display: grid;
   place-items: center;
   width: 56px;
@@ -499,6 +525,17 @@ button:disabled {
   color: #244034;
   font-size: 1.25rem;
   font-weight: 700;
+}
+
+.person-node__base-indicator {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: #395945;
+  box-shadow: 0 0 0 2px rgba(252, 251, 247, 0.96);
 }
 
 .person-node--male .person-node__avatar {

@@ -1,6 +1,7 @@
 .spectra/
 .agents/
 .claude/
+.superpowers/
 openspec/.vector-search.db*
 node_modules/
 dist/

@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { sampleTree } from "../src/data/sampleTree.ts";
 import { buildFlowElements, deletePersonFromTree } from "../src/lib/tree.ts";
 import { buildSearchResults } from "../src/lib/search.ts";
+import { resolveKinshipLabel } from "../src/lib/kinship.ts";
 import type { FamilyTreeDocument } from "../src/types/family";
 
 const NODE_WIDTH = 190;
@@ -357,6 +358,67 @@ test("search summaries include spouse names and child counts with a fallback", (
   assert.equal(userResult?.summary, "尚無關係資料");
 });
 
+test("kinship helper resolves direct lineal and spouse labels", () => {
+  assert.equal(
+    resolveKinshipLabel("p-father", "p-mother", sampleTree.people, sampleTree.relationships),
+    "妻子",
+  );
+  assert.equal(
+    resolveKinshipLabel("p-mother", "p-father", sampleTree.people, sampleTree.relationships),
+    "丈夫",
+  );
+  assert.equal(
+    resolveKinshipLabel("p-father", "p-user", sampleTree.people, sampleTree.relationships),
+    "女兒",
+  );
+  assert.equal(
+    resolveKinshipLabel("p-user", "p-father", sampleTree.people, sampleTree.relationships),
+    "父親",
+  );
+});
+
+test("kinship helper resolves siblings, grandparents, grandchildren, and in-laws", () => {
+  const marriedTree: FamilyTreeDocument = {
+    version: 1,
+    people: [
+      ...sampleTree.people,
+      { id: "p-spouse", name: "林小美", gender: "female" },
+      { id: "p-child", name: "王小寶", gender: "male" },
+      { id: "p-wife-father", name: "林大海", gender: "male" },
+      { id: "p-wife-mother", name: "陳月華", gender: "female" },
+    ],
+    relationships: [
+      ...sampleTree.relationships,
+      { id: "r-user-spouse", type: "spouse", fromPersonId: "p-brother", toPersonId: "p-spouse" },
+      { id: "r-brother-child", type: "parent-child", fromPersonId: "p-brother", toPersonId: "p-child" },
+      { id: "r-spouse-child", type: "parent-child", fromPersonId: "p-spouse", toPersonId: "p-child" },
+      { id: "r-wife-father", type: "parent-child", fromPersonId: "p-wife-father", toPersonId: "p-spouse" },
+      { id: "r-wife-mother", type: "parent-child", fromPersonId: "p-wife-mother", toPersonId: "p-spouse" },
+    ],
+  };
+
+  assert.equal(
+    resolveKinshipLabel("p-user", "p-brother", sampleTree.people, sampleTree.relationships),
+    "弟弟",
+  );
+  assert.equal(
+    resolveKinshipLabel("p-user", "p-grandma", sampleTree.people, sampleTree.relationships),
+    "祖母",
+  );
+  assert.equal(
+    resolveKinshipLabel("p-grandpa", "p-user", sampleTree.people, sampleTree.relationships),
+    "孫女",
+  );
+  assert.equal(
+    resolveKinshipLabel("p-brother", "p-wife-father", marriedTree.people, marriedTree.relationships),
+    "岳父",
+  );
+  assert.equal(
+    resolveKinshipLabel("p-grandma", "p-mother", sampleTree.people, sampleTree.relationships),
+    "暫不支援",
+  );
+});
+
 test("selected nodes have a strong readable highlight style", () => {
   const styles = readFileSync(
     new URL("../src/styles.css", import.meta.url),
@@ -544,6 +606,8 @@ test("selected people get a node-adjacent action fab", () => {
   assert.match(appSource, /編輯資料/);
   assert.match(appSource, /新增配偶/);
   assert.match(appSource, /新增子女/);
+  assert.match(appSource, /設為稱謂基準/);
+  assert.match(appSource, /取消稱謂基準/);
 });
 
 test("shared fab panel does not contain spouse or child actions", () => {
@@ -670,4 +734,58 @@ test("editing happens inside a modal instead of a persistent sidebar form", () =
   assert.match(appSource, /照片 URL（選填）/);
   assert.match(appSource, /儲存/);
   assert.match(appSource, /取消/);
+});
+
+test("buildFlowElements pushes kinship labels and base markers into node data", () => {
+  const { nodes } = buildFlowElements(
+    sampleTree.people,
+    sampleTree.relationships,
+    "p-user",
+    "p-grandma",
+  );
+  const baseNode = nodes.find((node) => node.id === "p-grandma");
+  const targetNode = nodes.find((node) => node.id === "p-user");
+  const unsupportedNode = nodes.find((node) => node.id === "p-mother");
+
+  assert.ok(baseNode, "expected kinship base node to exist");
+  assert.ok(targetNode, "expected target node to exist");
+  assert.ok(unsupportedNode, "expected unsupported kinship node to exist");
+  assert.equal(baseNode.data.isKinshipBase, true);
+  assert.equal(baseNode.data.kinshipLabel, undefined);
+  assert.equal(targetNode.data.kinshipLabel, "孫女");
+  assert.equal(unsupportedNode.data.kinshipLabel, "?");
+});
+
+test("person nodes render kinship pills above the card and a subtle base marker", () => {
+  const componentSource = readFileSync(
+    new URL("../src/components/PersonNode.tsx", import.meta.url),
+    "utf8",
+  );
+  const styles = readFileSync(
+    new URL("../src/styles.css", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(componentSource, /person-node__kinship/);
+  assert.match(componentSource, /person-node__base-indicator/);
+  assert.match(styles, /\.person-node__kinship\s*\{/);
+  assert.match(styles, /\.person-node__base-indicator\s*\{/);
+});
+
+test("kinship base stays separate from selection and renders directly on nodes", () => {
+  const appSource = readFileSync(
+    new URL("../src/App.tsx", import.meta.url),
+    "utf8",
+  );
+  const onPaneClickSection = appSource.match(
+    /onPaneClick=\{\(\) => \{[\s\S]*?setSelectedPersonId\(null\);[\s\S]*?\}\}/,
+  );
+
+  assert.match(appSource, /const \[kinshipBasePersonId, setKinshipBasePersonId\] = useState<string \| null>\(null\);/);
+  assert.match(appSource, /setKinshipBasePersonId\(selectedPersonId\);/);
+  assert.match(appSource, /setKinshipBasePersonId\(null\);/);
+  assert.ok(onPaneClickSection, "expected onPaneClick handler to exist");
+  assert.doesNotMatch(onPaneClickSection[0], /setKinshipBasePersonId\(null\);/);
+  assert.doesNotMatch(appSource, /稱謂基準：/);
+  assert.doesNotMatch(appSource, /相對稱謂：/);
 });

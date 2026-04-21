@@ -56,6 +56,7 @@ function App() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchComposing, setIsSearchComposing] = useState(false);
+  const [kinshipBasePersonId, setKinshipBasePersonId] = useState<string | null>(null);
   const [people, setPeople] = useState<Person[]>(sampleTree.people);
   const [relationships, setRelationships] = useState<Relationship[]>(sampleTree.relationships);
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
@@ -82,6 +83,7 @@ function App() {
     people,
     relationships,
     selectedPersonId,
+    kinshipBasePersonId,
   );
 
   useEffect(() => {
@@ -135,6 +137,16 @@ function App() {
       mediaQuery.removeEventListener("change", handleChange);
     };
   }, []);
+
+  useEffect(() => {
+    if (!kinshipBasePersonId) {
+      return;
+    }
+
+    if (!people.some((person) => person.id === kinshipBasePersonId)) {
+      setKinshipBasePersonId(null);
+    }
+  }, [kinshipBasePersonId, people]);
 
   function addStandalonePerson() {
     const newPerson = createBlankPerson(getNextPersonName("新人物", people), "other");
@@ -206,6 +218,9 @@ function App() {
     setPeople(nextDocument.people);
     setRelationships(nextDocument.relationships);
     setSelectedPersonId(nextDocument.people[0]?.id ?? null);
+    if (selectedPerson.id === kinshipBasePersonId) {
+      setKinshipBasePersonId(null);
+    }
     setIsPersonFabOpen(false);
     setIsEditModalOpen(false);
     setImportMessage("已刪除人物並移除相關關係。");
@@ -242,6 +257,7 @@ function App() {
       setPeople(parsed.people);
       setRelationships(parsed.relationships);
       setSelectedPersonId(parsed.people[0]?.id ?? null);
+      setKinshipBasePersonId(null);
       setIsGlobalFabOpen(false);
       setIsPersonFabOpen(false);
       setIsEditModalOpen(false);
@@ -257,6 +273,7 @@ function App() {
     setPeople(sampleTree.people);
     setRelationships(sampleTree.relationships);
     setSelectedPersonId(sampleTree.people[4]?.id ?? null);
+    setKinshipBasePersonId(null);
     setIsGlobalFabOpen(false);
     setIsPersonFabOpen(false);
     setIsEditModalOpen(false);
@@ -516,6 +533,31 @@ function App() {
                 >
                   編輯資料
                 </button>
+                {selectedPersonId === kinshipBasePersonId ? (
+                  <button
+                    className="button-secondary"
+                    onClick={() => {
+                      setKinshipBasePersonId(null);
+                    }}
+                    type="button"
+                  >
+                    取消稱謂基準
+                  </button>
+                ) : (
+                  <button
+                    className="button-secondary"
+                    onClick={() => {
+                      if (!selectedPersonId) {
+                        return;
+                      }
+
+                      setKinshipBasePersonId(selectedPersonId);
+                    }}
+                    type="button"
+                  >
+                    設為稱謂基準
+                  </button>
+                )}
                 {!selectedSpouseId ? (
                   <button
                     className="button-secondary"

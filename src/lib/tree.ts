@@ -1,6 +1,7 @@
 import type { Edge } from "@xyflow/react";
 import type { PersonFlowNode } from "../components/PersonNode";
 import type { FamilyTreeDocument, Gender, Person, Relationship } from "../types/family";
+import { resolveKinshipLabel } from "./kinship.ts";
 
 const NODE_WIDTH = 190;
 const NODE_HEIGHT = 92;
@@ -121,6 +122,7 @@ export function buildFlowElements(
   people: Person[],
   relationships: Relationship[],
   selectedPersonId: string | null = null,
+  kinshipBasePersonId: string | null = null,
 ): {
   nodes: PersonFlowNode[];
   edges: Edge[];
@@ -140,6 +142,13 @@ export function buildFlowElements(
     const centeredY = TOP_PADDING + generation * RANK_SPACING;
     const centeredX = personCenterXById.get(person.id) ?? 0;
 
+    const kinshipData = getNodeKinshipData(
+      person.id,
+      kinshipBasePersonId,
+      people,
+      relationships,
+    );
+
     return {
       id: person.id,
       type: "person",
@@ -153,6 +162,7 @@ export function buildFlowElements(
         name: person.name,
         gender: person.gender,
         photoUrl: person.photoUrl,
+        ...kinshipData,
       },
       selected: person.id === selectedPersonId,
       draggable: false,
@@ -180,6 +190,37 @@ export function buildFlowElements(
   const edges = [...spouseEdges, ...familyEdges];
 
   return { nodes, edges };
+}
+
+function getNodeKinshipData(
+  personId: string,
+  kinshipBasePersonId: string | null,
+  people: Person[],
+  relationships: Relationship[],
+): {
+  kinshipLabel?: string;
+  isKinshipBase?: boolean;
+} {
+  if (!kinshipBasePersonId) {
+    return {};
+  }
+
+  if (personId === kinshipBasePersonId) {
+    return {
+      isKinshipBase: true,
+    };
+  }
+
+  const label = resolveKinshipLabel(
+    kinshipBasePersonId,
+    personId,
+    people,
+    relationships,
+  );
+
+  return {
+    kinshipLabel: label === "暫不支援" ? "?" : label,
+  };
 }
 
 export function getSpouseId(

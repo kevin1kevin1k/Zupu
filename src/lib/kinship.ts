@@ -43,6 +43,17 @@ function getChildIds(personId: string, relationships: Relationship[]): string[] 
     .map((relationship) => relationship.toPersonId);
 }
 
+function sharesParent(
+  firstPersonId: string,
+  secondPersonId: string,
+  relationships: Relationship[],
+): boolean {
+  const firstParentIds = new Set(getParentIds(firstPersonId, relationships));
+  const secondParentIds = getParentIds(secondPersonId, relationships);
+
+  return secondParentIds.some((parentId) => firstParentIds.has(parentId));
+}
+
 function labelByGender(
   gender: Person["gender"] | undefined,
   maleLabel: string,
@@ -54,6 +65,71 @@ function labelByGender(
 
   if (gender === "female") {
     return femaleLabel;
+  }
+
+  return "暫不支援";
+}
+
+function resolveParentSiblingLabel(
+  parent: Person,
+  parentSibling: Person,
+  parentIndex: number,
+  parentSiblingIndex: number,
+): string {
+  if (parent.gender === "male") {
+    if (parentSibling.gender === "male") {
+      return parentSiblingIndex < parentIndex ? "伯父" : "叔叔";
+    }
+
+    if (parentSibling.gender === "female") {
+      return "姑姑";
+    }
+
+    return "暫不支援";
+  }
+
+  if (parent.gender === "female") {
+    if (parentSibling.gender === "male") {
+      return "舅舅";
+    }
+
+    if (parentSibling.gender === "female") {
+      return "阿姨";
+    }
+  }
+
+  return "暫不支援";
+}
+
+function resolveParentSiblingSpouseLabel(
+  parent: Person,
+  parentSibling: Person,
+  parentSiblingSpouse: Person,
+  parentIndex: number,
+  parentSiblingIndex: number,
+): string {
+  if (parent.gender === "male") {
+    if (parentSibling.gender === "male") {
+      if (parentSiblingSpouse.gender !== "female") {
+        return "暫不支援";
+      }
+
+      return parentSiblingIndex < parentIndex ? "伯母" : "嬸嬸";
+    }
+
+    if (parentSibling.gender === "female") {
+      return parentSiblingSpouse.gender === "male" ? "姑丈" : "暫不支援";
+    }
+  }
+
+  if (parent.gender === "female") {
+    if (parentSibling.gender === "male") {
+      return parentSiblingSpouse.gender === "female" ? "舅媽" : "暫不支援";
+    }
+
+    if (parentSibling.gender === "female") {
+      return parentSiblingSpouse.gender === "male" ? "姨丈" : "暫不支援";
+    }
   }
 
   return "暫不支援";
@@ -124,6 +200,48 @@ export function resolveKinshipLabel(
 
   if (grandChildIds.has(targetPersonId)) {
     return labelByGender(targetPerson.gender, "孫子", "孫女");
+  }
+
+  for (const parentId of parentIds) {
+    const parent = personById.get(parentId);
+
+    if (!parent) {
+      continue;
+    }
+
+    const parentIndex = personIndexById.get(parentId) ?? 0;
+    const parentSiblingIds = people
+      .filter((person) => person.id !== parentId && sharesParent(parentId, person.id, relationships))
+      .map((person) => person.id);
+
+    for (const parentSiblingId of parentSiblingIds) {
+      const parentSibling = personById.get(parentSiblingId);
+
+      if (!parentSibling) {
+        continue;
+      }
+
+      const parentSiblingIndex = personIndexById.get(parentSiblingId) ?? 0;
+
+      if (targetPersonId === parentSiblingId) {
+        return resolveParentSiblingLabel(
+          parent,
+          parentSibling,
+          parentIndex,
+          parentSiblingIndex,
+        );
+      }
+
+      if (getSpouseId(parentSiblingId, relationships) === targetPersonId) {
+        return resolveParentSiblingSpouseLabel(
+          parent,
+          parentSibling,
+          targetPerson,
+          parentIndex,
+          parentSiblingIndex,
+        );
+      }
+    }
   }
 
   if (spouseId) {

@@ -419,6 +419,108 @@ test("kinship helper resolves siblings, grandparents, grandchildren, and in-laws
   );
 });
 
+test("kinship helper resolves parents siblings with common Taiwanese labels", () => {
+  const extendedTree: FamilyTreeDocument = {
+    version: 1,
+    people: [
+      { id: "p-paternal-grandpa", name: "王爺爺", gender: "male" },
+      { id: "p-paternal-grandma", name: "王奶奶", gender: "female" },
+      { id: "p-father-older-brother", name: "王伯", gender: "male" },
+      { id: "p-father", name: "王爸", gender: "male" },
+      { id: "p-father-younger-brother", name: "王叔", gender: "male" },
+      { id: "p-father-sister", name: "王姑", gender: "female" },
+      { id: "p-maternal-grandpa", name: "林外公", gender: "male" },
+      { id: "p-maternal-grandma", name: "林外婆", gender: "female" },
+      { id: "p-mother-brother", name: "林舅", gender: "male" },
+      { id: "p-mother", name: "林媽", gender: "female" },
+      { id: "p-mother-sister", name: "林姨", gender: "female" },
+      { id: "p-user", name: "王小孩", gender: "other" },
+    ],
+    relationships: [
+      { id: "r-paternal-grandpa-older", type: "parent-child", fromPersonId: "p-paternal-grandpa", toPersonId: "p-father-older-brother" },
+      { id: "r-paternal-grandma-older", type: "parent-child", fromPersonId: "p-paternal-grandma", toPersonId: "p-father-older-brother" },
+      { id: "r-paternal-grandpa-father", type: "parent-child", fromPersonId: "p-paternal-grandpa", toPersonId: "p-father" },
+      { id: "r-paternal-grandma-father", type: "parent-child", fromPersonId: "p-paternal-grandma", toPersonId: "p-father" },
+      { id: "r-paternal-grandpa-younger", type: "parent-child", fromPersonId: "p-paternal-grandpa", toPersonId: "p-father-younger-brother" },
+      { id: "r-paternal-grandma-younger", type: "parent-child", fromPersonId: "p-paternal-grandma", toPersonId: "p-father-younger-brother" },
+      { id: "r-paternal-grandpa-sister", type: "parent-child", fromPersonId: "p-paternal-grandpa", toPersonId: "p-father-sister" },
+      { id: "r-paternal-grandma-sister", type: "parent-child", fromPersonId: "p-paternal-grandma", toPersonId: "p-father-sister" },
+      { id: "r-maternal-grandpa-brother", type: "parent-child", fromPersonId: "p-maternal-grandpa", toPersonId: "p-mother-brother" },
+      { id: "r-maternal-grandma-brother", type: "parent-child", fromPersonId: "p-maternal-grandma", toPersonId: "p-mother-brother" },
+      { id: "r-maternal-grandpa-mother", type: "parent-child", fromPersonId: "p-maternal-grandpa", toPersonId: "p-mother" },
+      { id: "r-maternal-grandma-mother", type: "parent-child", fromPersonId: "p-maternal-grandma", toPersonId: "p-mother" },
+      { id: "r-maternal-grandpa-sister", type: "parent-child", fromPersonId: "p-maternal-grandpa", toPersonId: "p-mother-sister" },
+      { id: "r-maternal-grandma-sister", type: "parent-child", fromPersonId: "p-maternal-grandma", toPersonId: "p-mother-sister" },
+      { id: "r-father-user", type: "parent-child", fromPersonId: "p-father", toPersonId: "p-user" },
+      { id: "r-mother-user", type: "parent-child", fromPersonId: "p-mother", toPersonId: "p-user" },
+    ],
+  };
+
+  assert.equal(resolveKinshipLabel("p-user", "p-father-older-brother", extendedTree.people, extendedTree.relationships), "伯父");
+  assert.equal(resolveKinshipLabel("p-user", "p-father-younger-brother", extendedTree.people, extendedTree.relationships), "叔叔");
+  assert.equal(resolveKinshipLabel("p-user", "p-father-sister", extendedTree.people, extendedTree.relationships), "姑姑");
+  assert.equal(resolveKinshipLabel("p-user", "p-mother-brother", extendedTree.people, extendedTree.relationships), "舅舅");
+  assert.equal(resolveKinshipLabel("p-user", "p-mother-sister", extendedTree.people, extendedTree.relationships), "阿姨");
+});
+
+test("kinship helper resolves spouses of parents siblings", () => {
+  const extendedTree: FamilyTreeDocument = {
+    version: 1,
+    people: [
+      { id: "p-paternal-grandpa", name: "王爺爺", gender: "male" },
+      { id: "p-paternal-grandma", name: "王奶奶", gender: "female" },
+      { id: "p-father-older-brother", name: "王伯", gender: "male" },
+      { id: "p-father-older-brother-spouse", name: "伯母", gender: "female" },
+      { id: "p-father", name: "王爸", gender: "male" },
+      { id: "p-father-younger-brother", name: "王叔", gender: "male" },
+      { id: "p-father-younger-brother-spouse", name: "嬸", gender: "female" },
+      { id: "p-father-sister", name: "王姑", gender: "female" },
+      { id: "p-father-sister-spouse", name: "姑丈", gender: "male" },
+      { id: "p-maternal-grandpa", name: "林外公", gender: "male" },
+      { id: "p-maternal-grandma", name: "林外婆", gender: "female" },
+      { id: "p-mother-brother", name: "林舅", gender: "male" },
+      { id: "p-mother-brother-spouse", name: "舅媽", gender: "female" },
+      { id: "p-mother", name: "林媽", gender: "female" },
+      { id: "p-mother-sister", name: "林姨", gender: "female" },
+      { id: "p-mother-sister-spouse", name: "姨丈", gender: "male" },
+      { id: "p-unknown-parent-sibling", name: "未知", gender: "other" },
+      { id: "p-user", name: "王小孩", gender: "other" },
+    ],
+    relationships: [
+      { id: "r-paternal-grandpa-older", type: "parent-child", fromPersonId: "p-paternal-grandpa", toPersonId: "p-father-older-brother" },
+      { id: "r-paternal-grandma-older", type: "parent-child", fromPersonId: "p-paternal-grandma", toPersonId: "p-father-older-brother" },
+      { id: "r-older-spouse", type: "spouse", fromPersonId: "p-father-older-brother", toPersonId: "p-father-older-brother-spouse" },
+      { id: "r-paternal-grandpa-father", type: "parent-child", fromPersonId: "p-paternal-grandpa", toPersonId: "p-father" },
+      { id: "r-paternal-grandma-father", type: "parent-child", fromPersonId: "p-paternal-grandma", toPersonId: "p-father" },
+      { id: "r-paternal-grandpa-younger", type: "parent-child", fromPersonId: "p-paternal-grandpa", toPersonId: "p-father-younger-brother" },
+      { id: "r-paternal-grandma-younger", type: "parent-child", fromPersonId: "p-paternal-grandma", toPersonId: "p-father-younger-brother" },
+      { id: "r-younger-spouse", type: "spouse", fromPersonId: "p-father-younger-brother", toPersonId: "p-father-younger-brother-spouse" },
+      { id: "r-paternal-grandpa-sister", type: "parent-child", fromPersonId: "p-paternal-grandpa", toPersonId: "p-father-sister" },
+      { id: "r-paternal-grandma-sister", type: "parent-child", fromPersonId: "p-paternal-grandma", toPersonId: "p-father-sister" },
+      { id: "r-sister-spouse", type: "spouse", fromPersonId: "p-father-sister", toPersonId: "p-father-sister-spouse" },
+      { id: "r-paternal-grandpa-unknown", type: "parent-child", fromPersonId: "p-paternal-grandpa", toPersonId: "p-unknown-parent-sibling" },
+      { id: "r-paternal-grandma-unknown", type: "parent-child", fromPersonId: "p-paternal-grandma", toPersonId: "p-unknown-parent-sibling" },
+      { id: "r-maternal-grandpa-brother", type: "parent-child", fromPersonId: "p-maternal-grandpa", toPersonId: "p-mother-brother" },
+      { id: "r-maternal-grandma-brother", type: "parent-child", fromPersonId: "p-maternal-grandma", toPersonId: "p-mother-brother" },
+      { id: "r-brother-spouse", type: "spouse", fromPersonId: "p-mother-brother", toPersonId: "p-mother-brother-spouse" },
+      { id: "r-maternal-grandpa-mother", type: "parent-child", fromPersonId: "p-maternal-grandpa", toPersonId: "p-mother" },
+      { id: "r-maternal-grandma-mother", type: "parent-child", fromPersonId: "p-maternal-grandma", toPersonId: "p-mother" },
+      { id: "r-maternal-grandpa-sister", type: "parent-child", fromPersonId: "p-maternal-grandpa", toPersonId: "p-mother-sister" },
+      { id: "r-maternal-grandma-sister", type: "parent-child", fromPersonId: "p-maternal-grandma", toPersonId: "p-mother-sister" },
+      { id: "r-mother-sister-spouse", type: "spouse", fromPersonId: "p-mother-sister", toPersonId: "p-mother-sister-spouse" },
+      { id: "r-father-user", type: "parent-child", fromPersonId: "p-father", toPersonId: "p-user" },
+      { id: "r-mother-user", type: "parent-child", fromPersonId: "p-mother", toPersonId: "p-user" },
+    ],
+  };
+
+  assert.equal(resolveKinshipLabel("p-user", "p-father-older-brother-spouse", extendedTree.people, extendedTree.relationships), "伯母");
+  assert.equal(resolveKinshipLabel("p-user", "p-father-younger-brother-spouse", extendedTree.people, extendedTree.relationships), "嬸嬸");
+  assert.equal(resolveKinshipLabel("p-user", "p-father-sister-spouse", extendedTree.people, extendedTree.relationships), "姑丈");
+  assert.equal(resolveKinshipLabel("p-user", "p-mother-brother-spouse", extendedTree.people, extendedTree.relationships), "舅媽");
+  assert.equal(resolveKinshipLabel("p-user", "p-mother-sister-spouse", extendedTree.people, extendedTree.relationships), "姨丈");
+  assert.equal(resolveKinshipLabel("p-user", "p-unknown-parent-sibling", extendedTree.people, extendedTree.relationships), "暫不支援");
+});
+
 test("selected nodes have a strong readable highlight style", () => {
   const styles = readFileSync(
     new URL("../src/styles.css", import.meta.url),
